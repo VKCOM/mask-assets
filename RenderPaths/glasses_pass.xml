@@ -1,0 +1,5 @@
+<renderpath>
+    <command type="scenepass" pass="glasses" tag="3dStartFinish">
+        <texture unit="normal" name="viewport" />
+    </command>
+</renderpath>

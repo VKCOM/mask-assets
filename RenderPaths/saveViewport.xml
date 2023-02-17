@@ -1,0 +1,9 @@
+<renderpath>
+    <rendertarget name="savedViewport" sizedivisor="1 1" format="rgba" filter="true" />
+
+    <command type="quad" vs="CopyFramebuffer" ps="CopyFramebuffer" output="savedViewport">
+        <texture unit="diffuse" name="viewport" />
+    </command>
+    <command type="clear" color="0.0 0.0 0.0 0.0" depth="1.0" stencil="0" />
+
+</renderpath>

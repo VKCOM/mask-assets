@@ -1,0 +1,29 @@
+<renderpath>
+    <command type="clear" color=".5 .5 .5" depth="1.0" stencil="0" />
+
+    <command type="quad" tag="Yuv2Rgb" vs="CopyFramebuffer" ps="CopyFramebuffer" output="viewport">
+      <texture unit="diffuse"  name="src_frame_y" />
+    </command>
+
+    <command type="quad" tag="ColorFilterPre" enabled="false" vs="ColorFilter" ps="ColorFilter" output="viewport">
+        <texture unit="diffuse" name="viewport" />
+        <texture unit="normal"  name="color_filter_pre_lut" />
+    </command>                              
+    
+    <command type="scenepass" pass="cull" />
+    <command type="scenepass" pass="base" vertexlights="true" metadata="base" />
+    <command type="forwardlights" pass="light" />
+    <command type="scenepass" pass="postopaque" />
+    <command type="scenepass" pass="refract">
+        <texture unit="environment" name="viewport" />
+    </command>
+    <command type="scenepass" pass="alpha" vertexlights="true" sort="backtofront" metadata="alpha" />
+    <command type="scenepass" pass="postalpha" sort="backtofront" />
+
+    <command type="quad" tag="ColorFilterPost" enabled="false" vs="ColorFilter" ps="ColorFilter" output="viewport">
+        <texture unit="diffuse" name="viewport" />
+        <texture unit="normal"  name="color_filter_post_lut" />
+    </command>
+
+
+</renderpath>

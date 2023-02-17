@@ -1,0 +1,5 @@
+<renderpath>
+    <command type="quad" output="viewport" tag="viewportpass">
+        <texture unit="environment" name="viewport" />
+    </command>
+</renderpath>

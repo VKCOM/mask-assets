@@ -1,0 +1,826 @@
+#include "ScriptEngine/Effects/Base/BaseEffect.as"
+#include "ScriptEngine/Effects/Base/BaseAnimation.as"
+
+
+namespace MaskEngine
+{
+
+/* Class for animating 3D model's textures.
+ */
+class model_texture_animation
+{
+    // Handler to material that has ONE type of texture that should be animated 
+    Material@ material;
+    // All paths to texture files for animation
+    Array<String> texturePaths;
+    // A type of texture from Urho3D AngelScript API
+    TextureUnit texture_type;
+    // Either 'once' or 'loop'
+    String animation_type;
+    // Either `Texture2D` for *.png or `TextureCube` for *.xml
+    String texture_resource;
+
+    // From artist's settings in 'mask.json'
+    String trigger_start;
+    String trigger_stop;
+
+    // Runtime variables
+    private bool running = false;
+    private float elapsedTime = 0.0;
+    private float fps = 30.0;
+    private float duration;
+
+    // Construct with neccessary parameters
+    model_texture_animation(Material@ mat, String& type, JSONValue& texture_desc)
+    {
+        material = mat;
+
+        if (type == "diffuse")
+            texture_type = TU_DIFFUSE;
+        else if (type == "normal")
+            texture_type = TU_NORMAL;
+        else if (type == "specular")
+            texture_type = TU_SPECULAR;
+        else if (type == "environment")
+            texture_type = TU_ENVIRONMENT;
+        else if (type == "emissive")
+            texture_type = TU_EMISSIVE;
+        else
+            log.Error("model3d: Unexpected material type for texture animation.");
+
+        // Parse animation parameters from 'mask.json'
+        if (!parse_description(texture_desc))
+            log.Error("model3d: Could not parse material textures.");
+
+        duration = texturePaths.length / fps;
+
+        // Sunscriptions
+        if (trigger_start == "tap" || trigger_stop == "tap")
+            SubscribeToEvent("MouseEvent", "HandleTapEvent");
+
+        if (trigger_start == "face_found" || trigger_stop == "face_lost")
+            SubscribeToEvent("UpdateFaceDetected", "HandleFaceDetected");
+
+        SubscribeToEvent("Update", "HandleUpdate");
+    }
+
+    private bool parse_description(JSONValue& texture_desc)
+    {
+        if (texture_desc.Contains("texture"))
+        {
+            String pathToFirst = texture_desc.Get("texture").GetString();
+            String path = GetPath(pathToFirst);
+            String file = GetFileName(pathToFirst);
+            String extension = GetExtension(pathToFirst, false);
+            texture_resource = extension == ".xml" ? "TextureCube" : "Texture2D";
+
+            if (cache.Exists(pathToFirst))
+                if (cache.GetResource(texture_resource, pathToFirst) !is null)
+                {
+                    texturePaths.Push(pathToFirst);
+                }
+                else
+                {
+                    log.Error("model3d: Failed to load texture file '" + pathToFirst + "'");
+                    return false;
+                }
+
+            for (int a = 1; ; a++)
+            {
+                String fileName = path + file + String(a) + extension;
+                if (cache.Exists(fileName))
+                    if (cache.GetResource(texture_resource, fileName) !is null)
+                    {
+                        texturePaths.Push(fileName);
+                    }
+                    else
+                    {
+                        log.Error("model3d: Failed to load texture file '" + fileName + "'");
+                        return false;
+                    }
+                else
+                    break;
+            }
+
+            if (texture_desc.Contains("animation"))
+            {
+                JSONValue animation_parameters = texture_desc.Get("animation");
+                if (animation_parameters.Contains("fps"))
+                    fps = animation_parameters.Get("fps").GetFloat();
+
+                if (animation_parameters.Contains("type"))
+                    animation_type = animation_parameters.Get("type").GetString();
+                
+                if (animation_parameters.Contains("trigger_start"))
+                    trigger_start = animation_parameters.Get("trigger_start").GetString();
+
+                if (animation_parameters.Contains("trigger_stop"))
+                    trigger_stop = animation_parameters.Get("trigger_stop").GetString();
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    void start()
+    {
+        running = true;
+        elapsedTime = 0.0;
+    }
+
+    void stop()
+    {
+        running = false;
+    }
+
+    private void HandleTapEvent(StringHash eventType, VariantMap& eventData)
+    {
+        if (eventData["Event"].GetString() == "tap")
+        {
+            if (trigger_start == "tap" && !running)
+                start();
+            
+            else if (trigger_stop == "tap" && running)
+                stop();
+        }
+    }
+
+    private void HandleFaceDetected(StringHash eventType, VariantMap& eventData)
+    {
+        bool detected = eventData["Detected"].GetBool();
+
+        if (detected && trigger_start == "face_found" && !running)
+            start();
+        
+        if (!detected && trigger_stop == "face_lost" && running)
+            stop();
+    }
+
+    private void HandleUpdate(StringHash eventType, VariantMap& eventData)
+    {
+        if (running)
+        {
+            float dt = eventData["TimeStep"].GetFloat();
+            elapsedTime += dt;
+
+            uint frame = uint((elapsedTime * fps) % texturePaths.length);
+
+            if (animation_type == "once" && elapsedTime >= duration)
+            // if (animation_type == "once" && frame >= texturePaths.length)
+            {
+                stop();
+                return;
+            }
+
+            String texture_path = texturePaths[frame];
+            Texture@ texture = cache.GetResource(texture_resource, texture_path);
+            if (texture !is null)
+            {
+                if (texture_path.EndsWith(".xml"))
+                    material.textures[texture_type] = cast<TextureCube>(texture);
+                else
+                    material.textures[texture_type] = cast<Texture2D>(texture);
+            }
+        }
+    }
+
+}
+
+
+class model3d : BaseEffectImpl
+{
+    String _anchor;
+    Node@ _node;
+    Node@ _anchorNode;
+    bool _created = false;
+    Array<VariantMap> poiData;
+    //Child wiggle effect
+    BaseEffect@ _wiggly;
+    // Array of "materials" from mask.json
+    Array<Material@> materials;
+    // Texture animations for specified materials
+    Array<model_texture_animation@> textureAnimations;
+
+    AnimationController@ _animCtrl;
+    BaseAnimationImpl@ baseAnimation;
+    String _animFileName;
+    float _animSpeed;
+
+
+    model3d()
+    {
+        poiData.Resize(MAX_FACES);
+        @baseAnimation = BaseAnimationImpl(this);
+    }
+
+    bool Init(const JSONValue& effect_desc, BaseEffect@ parent)
+    {
+        if (!BaseEffectImpl::Init(effect_desc, parent))
+            return false;
+
+        Node@ faceNode = scene.GetChild(_faceNodeName);
+        if (faceNode is null)
+        {
+            log.Error("model3d: Cannot find face node.");
+            return false;
+        }
+
+        // Append render path
+        if (!InitRenderPass(effect_desc.Get("pass"), MAIN_RENDER_PASS_FILE))
+            return false;
+
+        // Setup Model Anchor Node
+        _anchor = effect_desc.Get("anchor").GetString();
+        if (_anchor == "ar_background")
+        {
+            _anchorNode = scene.GetChild("ar_background");
+        }
+        else if (_anchor == "ar_obj")
+        {
+            // _anchorNode = _scene->CreateChild("ar_3d");
+            _anchorNode = scene.GetChild("ar_3d");
+            _anchorNode.position = Vector3(0, 0, 0);
+        }
+        else if (_anchor == "free")
+        {
+            // _anchorNode = _scene->CreateChild("ar_3d");
+            _anchorNode = scene;
+            _anchorNode.position = Vector3(0, 0, 0);
+        }
+        else
+        {
+            _anchorNode = faceNode.CreateChild("anchor_model3d");
+            SubscribeToEvent("UpdateFacePOI", "HandleUpdateFacePOI");
+        }
+
+        // Create Model Node
+        _node = _anchorNode.CreateChild("model3d");
+
+        // Add tags to Model Node
+        AddTags(effect_desc, _node);
+
+        // Create Model
+        if (!CreateModel(effect_desc))
+        {
+            log.Error("model3d: Failed to init Model");
+            return false;
+        }
+
+        // Create Model Animation
+        if (effect_desc.Contains("animation")) 
+            if (!CreateAnimationModel(effect_desc.Get("animation")))
+            {
+                log.Error("model3d: Failed to init animation");
+                return false;
+            }
+
+        // Visibility Triggers
+        if (effect_desc.Get("visible").GetString() == "mouth_open")
+        {
+            Array<String> events     = { "mouth_open"  , "mouth_close" };
+            Array<String> actions    = { "show_action" , "hide_action" };
+            Array<String> delayParam = { "show_delay"  , "hide_delay"  };
+
+            for (uint i = 0; i < events.length; i++)
+            {
+                // Added mouth events / actions
+                BaseEffect@ mouthOpen = AddChildEffect(events[i]);
+
+                if (mouthOpen is null)
+                {
+                    log.Error("Cannot create mouthOpen for patch");
+                    return false;
+                }
+
+                String json;
+
+                if (effect_desc.Contains(delayParam[i]))
+                    json = "{ \"name\" : \"" + actions[i] + "\"," +
+                        "\"delay\":" + effect_desc.Get(delayParam[i]).GetFloat() + "}";
+                else
+                    json = actions[i];
+
+                JSONFile@ jsonFile = JSONFile();
+                jsonFile.FromString(json);
+
+                if (!mouthOpen.Init(jsonFile.GetRoot(), this))
+                {
+                    log.Error("Cannot init mouthOpen for patch");
+                    return false;
+                }
+            }
+            _visible = false;
+        }
+
+        // Init position / rotation / scale
+        Vector3 pos(0.0f, 0.0f, 0.0f);
+        ReadVector3(effect_desc.Get("position"), pos);
+
+        if (_anchor == "ar_background")
+            _node.worldPosition = pos;
+        else
+            _node.position = pos;
+
+        Vector3 rot(0.0f, 0.0f, 0.0f);
+        ReadVector3(effect_desc.Get("rotation"), rot);
+        _node.rotation = Quaternion(rot.x, rot.y, rot.z);
+
+        Vector3 scale(1.0f, 1.0f, 1.0f);
+        ReadVector3(effect_desc.Get("scale"), scale);
+        _node.scale = scale;
+
+        _SetVisible(false);
+
+        Array<String> reservedField;
+        reservedField.Push("animation");
+        reservedField.Push("material");
+        
+        //wiggle injection point
+
+        if (effect_desc.Contains("wiggle"))
+        {
+            @_wiggly = AddChildEffect("wiggle");
+            _wiggly.Init(effect_desc, this);
+        }
+
+        _inited = LoadAddons(effect_desc, reservedField);
+
+        return _inited;
+    }
+
+    /* Creates a `StaticModel` instance from specified file, 
+     * parses materials and adds them to `materials`.
+     */
+    bool CreateModel(const JSONValue& effect_desc)
+    {
+        // Load path to model file
+        String modelFilePath = effect_desc.Get("model").GetString();
+        if (modelFilePath.empty)
+        {
+            log.Error("model3d: Model file not specified");
+            return false;
+        }
+
+        Model@ model = cache.GetResource("Model", modelFilePath);
+        if (model is null)
+        {
+            log.Error("model3d: Failed to load model: " + modelFilePath);
+            return false;
+        }
+
+        StaticModel@ static_model = _node.CreateComponent("StaticModel");
+        static_model.model = model;
+
+        /*
+            features : 
+                get mats from xml file DONE
+                get mats from json file DONE
+                get mats from mask.jsom file DONE
+                    change tequniqes to array DONE
+                    change shader params to strings DONE
+                apply mat to one geom DONE
+                apply mat to many geoms DONE
+                apply mats to same amount of geoms DONE
+                    for different show error DONE
+                
+                material could be a string, Array<string>, object, Array<object>, mixed Array<String, object> DONE
+                string path could lead to xml or json file - looks like it's not a problem at all DONE
+
+                rewrite getMaterial -> add materials to globals DONE
+                if no material specified use default one NoTexture.xml for everything DONE
+                add error messages if something goes wrong DONE
+                check Unload      
+        */
+        
+        // XMLFile@ sky = cache.GetResource("XMLFile", "Textures/Sky.xml");
+        // Print(sky.ToString());
+
+        // Parse multiple or single materials
+        if (effect_desc.Get("material").isArray)
+            for (uint i = 0; i < effect_desc.Get("material").size; i++)
+                materials.Push(ParseMaterial(effect_desc.Get("material")[i]));
+        else
+            materials.Push(ParseMaterial(effect_desc.Get("material")));
+
+        // Amount of materials should be the same as the amount of
+        // geometries in the model loaded previously
+        uint numGeometries = static_model.numGeometries;
+        uint numMaterials = materials.length;
+        if (numMaterials > 1 && numGeometries != numMaterials)
+        {
+            log.Error("model3d: Invalid number of materials for 3d model '" + modelFilePath
+                + "' (it has " + numGeometries + " and you specify "
+                + numMaterials + ")");
+            return false;
+        }
+
+        // Apply materials to model's geometries
+        for (uint m = 0; m < numGeometries; m++)
+        {
+            Material@ material;
+            if (numMaterials > 1)
+                material = materials[m];
+            else
+                // applying one mat or fallback NoTexutre.xml for every geometry 
+                material = materials[0];
+
+            // apply render pass idx
+            if (_renderPassIdx >= 0)
+            {
+                material = material.Clone();
+                for (uint i = 0; i < material.numTechniques; i++)
+                {
+                    Technique@ orig_t = material.techniques[i];
+                    Technique@ tech_clone = orig_t.ClonePrefix("", String(_renderPassIdx));
+                    material.SetTechnique(i, tech_clone);
+                }
+            }
+
+            static_model.materials[m] = material;
+        }
+
+        _created = true;
+        return true;
+    }
+
+    /* Parses `parameters` and `techniquies` of a material.
+     */
+    Material@ ParseMaterial(JSONValue material_desc)
+    {
+        Material@ material;
+        if (material_desc.isObject)
+        {
+            /* --------------------------------------------------------- */
+            /*  The next block is required, to make material settings    */
+            /*  look the same as everithing else in mask.json.           */
+
+            material = Material();
+
+            // 1. Parsing parameters
+            JSONValue parameters = material_desc.Get("parameters");
+
+            // Erase parameters from JSON object to replace their values
+            // with `String` representations of `Vector4`, and
+            // add back to `material_desc` as 'shaderParameters'.
+            material_desc.Erase("parameters");
+
+            Array<String> keys = parameters.GetFields();
+            for (uint i = 0; i < keys.length; i++)
+            {
+                // TO-DO or default behavior ???
+                // Could be the case when length is zero, ex - Metallic 
+
+                String key = keys[i];
+                JSONValue value = parameters.Get(key);
+
+                // Make string from array ("aka Vector4" - rgba)
+                String valueString = "";
+                for (uint j = 0; j < value.size; j++)
+                    valueString += value[j].GetFloat() + " ";
+
+                // Replace `Vector4` with string
+                parameters.Set(key, JSONValue(valueString));
+            }
+
+            material_desc.Set("shaderParameters", parameters);
+
+            // 2. Parsing techinques
+            JSONFile techniquesFile;
+            techniquesFile.FromString("{\"techniques\": [{\"name\": \"" + material_desc.Get("technique").GetString() + "\"}]}");
+            material_desc.Set("techniques", techniquesFile.GetRoot().Get("techniques"));
+            material_desc.Erase("technique");
+
+            // 3. Parse textures and make them compatible with Urho3D
+            JSONValue textures = material_desc.Get("textures");
+            material_desc.Erase("textures");
+
+            // `keys` are texture types - diffuse, normal, specular, environment or emissive.
+            keys = textures.GetFields();
+            for (uint i = 0; i < keys.length; i++)
+            {
+                String key = keys[i];
+                JSONValue value = textures.Get(key);
+                String valueString;
+
+                // Animation is NOT specified for this texture
+                if (value.isString)
+                    valueString = value.GetString();
+
+                // Animation IS specified for this texture
+                if (value.isObject)
+                {
+                    textureAnimations.Push(model_texture_animation(material, key, value));
+                    if (value.Contains("texture"))
+                        valueString = value.Get("texture").GetString();
+                }
+                textures.Set(key, JSONValue(valueString));
+            }
+
+            // Reset 'textures' with JSON value compatible with Urho3D
+            material_desc.Set("textures", textures);
+
+            // 4. Load material from JSON description that now includes:
+            //  - shaderParameters,
+            //  - techniques and
+            //  - textures.
+            material.Load(material_desc);
+        }
+        else if (material_desc.isString)
+        {
+            material = cache.GetResource("Material", material_desc.GetString());
+        } 
+
+        return material;
+    }
+
+    /* Parses `animation` of a model description, creates `AnimationModel`
+     * instead of `StaticModel`, copying all of its materials to it.
+     */
+    bool CreateAnimationModel(const JSONValue& ani_desc)
+    {
+        // Parse parameters from mask.json
+        if (!ani_desc.Get("file").isString)
+        {
+            log.Error("model3d: Animation file should be a the path to animation file");
+            return false;
+        }
+
+        _animFileName = ani_desc.Get("file").GetString();
+        _animSpeed = ani_desc.Get("speed").isNumber ? ani_desc.Get("speed").GetFloat() : 1.0;
+        String type = ani_desc.Get("type").isString ? ani_desc.Get("type").GetString() : "once";
+        bool loop = (type == "loop");
+        float fadeInTime = 0.0;
+
+        // Setup Urho3D `AnimationModel`
+        StaticModel@ staticModel = _node.GetComponent("StaticModel");
+        AnimatedModel@ animatedModel = _node.CreateComponent("AnimatedModel");
+        animatedModel.updateInvisible = true;
+        animatedModel.model = staticModel.model;
+        animatedModel.lightMask = staticModel.lightMask;
+
+        for (uint i = 0; i < staticModel.numGeometries; i++)
+            animatedModel.materials[i] = staticModel.materials[i];
+
+        _node.RemoveComponent("StaticModel");
+
+        // Setup Urho3D `AnimationController`
+        _animCtrl = _node.CreateComponent("AnimationController");
+        _animCtrl.PlayExclusive(_animFileName, 0, loop, fadeInTime);
+        _animCtrl.SetTime(_animFileName, 0.0);
+        _animCtrl.SetSpeed(_animFileName, 0.0);
+
+        String triggerStart = ani_desc.Get("trigger_start").GetString();
+        String triggerStop = ani_desc.Get("trigger_stop").GetString();
+
+        // hehe is a num of frames
+        // AnimationState@ animState = animatedModel.GetAnimationState(0);
+        // Animation@ anim = animState.animation;
+        // Print(anim.memoryUse);
+
+        SubscribeToEvent(START_ANIMATION_EVENT, "HandleStartAnimation");
+        SubscribeToEvent(STOP_ANIMATION_EVENT, "HandleStopAnimation");
+        SubscribeToEvent(SET_TIME_ANIMATION_EVENT, "HandleSetTimeAnimation");
+
+        // Create events for start and stop triggers
+        if (!triggerStart.empty)
+        {
+            // Create only one event with 'switch_animation' if
+            // 'triggerStart' not empty and equal to 'triggerStop'
+            if (triggerStart == triggerStop)
+            {
+                BaseEffect@ binaryEvent = AddChildEffect(triggerStart);
+                if (binaryEvent is null)
+                    return false;
+
+                String json;
+                if (ani_desc.Contains("show_delay"))
+                    json = "{ \"name\" : \"switch_animation\"," +
+                        "\"delay\":" + ani_desc.Get("show_delay").GetFloat() + "}";
+                else
+                    json = "{ \"name\" : \"switch_animation\"}";
+
+                JSONFile@ jsonFile = JSONFile();
+                jsonFile.FromString(json);
+
+                // Call `Init` method of `BaseEvent` class
+                if (!binaryEvent.Init(jsonFile.GetRoot(), this))
+                {
+                    log.Error("model3d: Cannot init " + triggerStart);
+                    return false;
+                }
+            }
+
+            // Create event for start action and, possibly, 
+            // event for stop action, if 'triggerStop' is not empty
+            else
+            {
+                // 1. Start event
+                // Create instance of one of the `BaseEvent` subclasses
+                BaseEffect@ startEvent = AddChildEffect(triggerStart);
+                if (startEvent is null)
+                    return false;
+
+                String json;
+                if (ani_desc.Contains("show_delay"))
+                    json = "{ \"name\" : \"start_animation\"," +
+                        "\"delay\":" + ani_desc.Get("show_delay").GetFloat() + "}";
+                else
+                    json = "{ \"name\" : \"start_animation\"}";
+
+                JSONFile@ startJsonFile = JSONFile();
+                startJsonFile.FromString(json);
+
+                // Call `Init` method of `BaseEvent` class
+                if (!startEvent.Init(startJsonFile.GetRoot(), this))
+                {
+                    log.Error("model3d: Cannot init " + triggerStart);
+                    return false;
+                }
+
+                // This instance of `model3d` is now DIRECT parent for both
+                // 'startEvent' and its child action.
+
+                // 2. Stop event
+                if (!triggerStop.empty)
+                {
+                    BaseEffect@ stopEvent = AddChildEffect(triggerStop);
+                    if (stopEvent is null)
+                        return false;
+
+                    String json;
+                    if (ani_desc.Contains("hide_delay"))
+                        json = "{ \"name\" : \"stop_animation\"," +
+                            "\"delay\":" + ani_desc.Get("hide_delay").GetFloat() + "}";
+                    else
+                        json = "{ \"name\" : \"stop_animation\"}";
+
+                    JSONFile@ stopJsonFile = JSONFile();
+                    stopJsonFile.FromString(json);
+
+                    if (!stopEvent.Init(stopJsonFile.GetRoot(), this))
+                    {
+                        log.Error("model3d: Cannot init " + triggerStop);
+                        return false;
+                    }
+                }
+            }
+        }
+
+        // Start animation without any controlling events
+        else
+        {
+            baseAnimation.Play();
+        }
+
+        // Just to ask Urho3D if animation has performed once.
+        // Without it, there's no way Urho3D animation controller
+        // can notify our 'BaseAnimation' that it is not playing.
+        // 'BaseAnimationAction's cannot do that either.
+        SubscribeToEvent("PostUpdate", "HandlePostUpdate");
+
+        return true;
+    }
+
+
+
+    /* -------------------------------------------------------------------------- */
+    /*                                Subscriptions                               */
+    /* -------------------------------------------------------------------------- */
+
+    void HandleStartAnimation(StringHash eventType, VariantMap& eventData)
+    {
+        BaseEffect@ baseRootEffect = cast<BaseEffect>(eventData["RootEffect"].GetScriptObject());
+
+        if (GetRootEffect().GetEffectId() == baseRootEffect.GetEffectId())
+        {
+            // Kind of resetting - without it, it won't start again
+            // after being played once.  Strange, because this method
+            // is called in `HandleSetTimeAnimation`, which is called right 
+            // after `Stop()` of `BaseAnimation` is called.
+            _animCtrl.SetTime(_animFileName, 0.0);
+            // Actual start
+            _animCtrl.SetSpeed(_animFileName, _animSpeed);
+        }
+    }
+
+    void HandleStopAnimation(StringHash eventType, VariantMap& eventData)
+    {
+        BaseEffect@ baseRootEffect = cast<BaseEffect>(eventData["RootEffect"].GetScriptObject());
+
+        if (GetRootEffect().GetEffectId() == baseRootEffect.GetEffectId())
+        {
+            // Actual stop
+            _animCtrl.SetSpeed(_animFileName, 0.0);
+            _animCtrl.SetTime(_animFileName, 0.0);
+        }
+    }
+
+    void HandleSetTimeAnimation(StringHash eventType, VariantMap& eventData)
+    {
+        BaseEffect@ baseRootEffect = cast<BaseEffect>(eventData["RootEffect"].GetScriptObject());
+
+        if (GetRootEffect().GetEffectId() == baseRootEffect.GetEffectId())
+        {
+            _animCtrl.SetTime(_animFileName, _animCtrl.GetLength(_animFileName) * eventData["localTime"].GetFloat());
+        }
+    }
+
+    void HandlePostUpdate(StringHash eventType, VariantMap& eventData)
+    {
+        // Don't make it a one-liner - animation won't start!
+        if (_animCtrl.IsAtEnd(_animFileName))
+        {
+            // For animation actions to know that it is played once
+            baseAnimation._isPlaying = false;
+            // Set it to the first frame
+            _animCtrl.SetSpeed(_animFileName, 0.0);
+            _animCtrl.SetTime(_animFileName, 0.0);
+        }
+    }
+
+    void HandleUpdateFacePOI(StringHash eventType, VariantMap& eventData)
+    {
+        uint faceIndex = eventData["NFace"].GetUInt();
+        poiData[faceIndex] = eventData;
+    }
+
+
+
+    /* -------------------------------------------------------------------------- */
+    /*                                  Interface                                 */
+    /* -------------------------------------------------------------------------- */
+
+    void Update(float timeDelta)
+    {
+        if (!_inited)
+            return;
+
+        if (!_anchor.empty && (_anchor == "free" || _anchor == "ar_background" || _anchor == "ar_obj"))
+        {
+            _node.enabled = true;
+            return;
+        }
+
+        if (!maskengine.IsFaceDetected(_faceIdx))
+        {
+            _SetVisible(false);
+            return;
+        }
+
+        if (_created)
+        {
+            _SetVisible(_visible);
+
+            if (!_anchor.empty && _anchor != "face")
+            {
+                if (poiData[_faceIdx]["PoiMap"].GetVariantMap().Contains(_anchor) &&
+                    poiData[_faceIdx]["Detected"].GetBool())
+                {
+                    Vector3 anchor_point = poiData[_faceIdx]["PoiMap"].GetVariantMap()[_anchor].GetVector3();
+                    _anchorNode.position = anchor_point;
+                }
+                else
+                {
+                    _SetVisible(false);
+                }
+            }
+        }
+    }
+
+    Node@ GetNode(uint index) override
+    {
+        return index == 0 ? _node : null;
+    }
+
+    void _SetVisible(bool visible) override
+    {
+        _node.enabled = visible;
+    }
+
+    String GetName() override
+    {
+        return "model3d";
+    }
+
+    void Unload() override
+    {
+        BaseEffectImpl::Unload();
+
+        if (_node !is null)
+            _node.RemoveComponent("StaticModel");
+    }
+    
+    Array<Material@> GetMaterials() 
+    {
+        return materials;
+    }
+
+    BaseAnimation@ GetAnimation() override
+    {
+        return baseAnimation;
+    }
+}
+
+}

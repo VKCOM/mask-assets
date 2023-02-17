@@ -1,0 +1,5 @@
+<renderpath>
+    <command type="quad" vs="CopyFramebuffer" ps="CopyFramebuffer" output="RenderPathTempTexture" tag="copy_viewport_to_texture">
+        <texture unit="diffuse" name="viewport" />
+    </command>
+</renderpath>

@@ -1,0 +1,3 @@
+<technique vs="GlassesLitSolid" ps="GlassesLitSolid" psdefines="DIFFMAP">
+    <pass name="glasses" vsdefines="ENVCUBEMAP PERPIXEL" psdefines="ENVCUBEMAP PERPIXEL" depthwrite="false" blend="replace" />
+</technique>

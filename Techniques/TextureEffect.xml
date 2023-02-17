@@ -1,0 +1,3 @@
+<technique vs="-" ps="-" psdefines="" vsdefines="">
+    <pass name="viewportblend" depthwrite="false" depthtest="false"/>
+</technique>

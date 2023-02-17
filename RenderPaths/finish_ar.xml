@@ -1,0 +1,3 @@
+<renderpath>
+    <command type="sendevent" name="finish_ar" tag="finish_ar" />
+</renderpath>

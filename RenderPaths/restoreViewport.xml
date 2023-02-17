@@ -1,0 +1,6 @@
+<renderpath>
+    <command type="quad" vs="CopyFramebuffer" ps="CopyFramebuffer" output="viewport" >
+        <texture unit="diffuse" name="savedViewport" />
+    </command>
+
+</renderpath>
