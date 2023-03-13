@@ -119,6 +119,11 @@ class fixeddetection : BasePlugin
         //     return false;
         // }
 
+        // Disable for face model 2 and more
+        if (GetGlobalVar("facemodel_version").GetInt() >= 2) {
+            return true;
+        }
+
         LoadSettings(plugin_config);
 
         if (nr_faces != 0)

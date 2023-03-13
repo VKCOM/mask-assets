@@ -3,11 +3,11 @@
 namespace MaskEngine
 {
 
-String []DEFAULT_TEXCOORD_FILE = {"Facemodel/default_mapping.bin",                         "Facemodel/sym_tex_coords_compatible.bin"};
-String []DEFAULT_INDEXES_FILE  = {"Facemodel/GENERATED_decimated_patched_hole_indices.bin","Facemodel/fm_render_ind.bin"};
-String []DEFAULT_LE_FILE       = {"Facemodel/eye1_indices_decimated.bin",                  "Facemodel/sym_left_eye_poly.bin"};
-String []DEFAULT_RE_FILE       = {"Facemodel/eye2_indices_decimated.bin",                  "Facemodel/sym_right_eye_poly.bin"};
-String []DEFAULT_MOUTH_FILE    = {"Facemodel/mouth_indices_decimated.bin",                 "Facemodel/sym_mouth_poly.bin"};
+String []DEFAULT_TEXCOORD_FILE = {"Facemodel/default_mapping.bin", "Facemodel/sym_tex_coords_compatible.bin", "Facemodel/tex_coords_mediapipe.bin"};
+String []DEFAULT_INDEXES_FILE  = {"Facemodel/GENERATED_decimated_patched_hole_indices.bin","Facemodel/fm_render_ind.bin", "Facemodel/indexes_mediapipe.bin"};
+String []DEFAULT_LE_FILE       = {"Facemodel/eye1_indices_decimated.bin",                  "Facemodel/sym_left_eye_poly.bin", "Facemodel/left_eye_indexes_mediapipe.bin"};
+String []DEFAULT_RE_FILE       = {"Facemodel/eye2_indices_decimated.bin",                  "Facemodel/sym_right_eye_poly.bin", "Facemodel/right_eye_indexes_mediapipe.bin"};
+String []DEFAULT_MOUTH_FILE    = {"Facemodel/mouth_indices_decimated.bin",                 "Facemodel/sym_mouth_poly.bin", "Facemodel/mouth_indexes_mediapipe.bin"};
 
 class facemodel : BaseEffectImpl
 {
