@@ -8,8 +8,12 @@
 #include "ScriptEngine/Utils.as"
 #include "ScriptEngine/Effects/Base/BaseEffect.as"
 #include "ScriptEngine/Plugins/BasePlugin.as"
+#include "ScriptEngine/Plugins/mirror.as"
+
 #include "ScriptEngine/Src/Mask.as"
 #include "ScriptEngine/Src/MaskScene.as"
+
+#include "ScriptEngine/HotReload.as"
 
 namespace MaskEngine
 {
@@ -24,6 +28,7 @@ namespace MaskEngine
         log.Info("Loading mask: " + filepath);
 
         AUTO_INCRIMENT_EFFECT_ID = 0;
+        // PrintDebugInfoRP();
 
         Loader loader(filepath);
         loader.Load(mask);
@@ -39,6 +44,10 @@ namespace MaskEngine
             maskengine.LoadFailed();
             return;
         }
+
+        // injectStart
+        hotReloader.Attach();
+        // injectEnd
     }
 
     void UnloadMask()
@@ -176,35 +185,59 @@ namespace MaskEngine
             }
         }
 
+        void FixYUV()
+        {
+            // change shader program for input video stream
+            String platform = GetPlatform();
+            bool runOnDesktop = (platform == "Windows" || platform == "Mac OS X");
+
+            RenderPath @defaultRP = renderer.viewports[0].renderPath;
+
+            String yuvShaderName = runOnDesktop ? "Yuv2Rgb" : "CopyFramebuffer";
+            for (uint index = 0; index < defaultRP.numCommands; index++)
+            {
+                RenderPathCommand command = defaultRP.commands[index];
+
+                if (command.tag == "Yuv2Rgb")
+                {
+                    command.pixelShaderName = yuvShaderName;
+                    command.vertexShaderName = yuvShaderName;
+
+                    defaultRP.RemoveCommand(index);
+                    defaultRP.InsertCommand(index, command);
+                }
+            }
+        }
+
         void AddMirrorCameraPlugin(JSONValue &maskJson)
         {
-            // check if used auto_mirror
             JSONValue effects = maskJson.Get("effects");
-            if (effects.isArray)
-            {
-                for (uint i = 0; i < effects.size; i++)
-                {
-                    JSONValue effect = effects[i];
-                    String effectName = effect.Get("name").GetString();
-                    if (effectName == "patch")
-                    {
-                        JSONValue texture = effect.Get("texture");
-                        if (!texture.isObject)
-                            continue;
-                        if (texture.Contains("auto_mirror"))
-                            return;
-                    }
-                }                
-            }
+            if (!effects.isArray)
+                return;
+
+            JSONValue plugins = maskJson.Get("plugins");
+            if (!plugins.isArray)
+                return;
 
             // check if mirror added manually
-            JSONValue plugins = maskJson.Get("plugins");
-            if (plugins.isArray)
+            for (uint i = 0; i < plugins.size; i++)
             {
-                for (uint i = 0; i < plugins.size; i++)
+                String pluginName = plugins[i].Get("name").GetString();
+                if (pluginName == "mirror")
+                    return;
+            }
+
+            // check if used auto_mirror
+            for (uint i = 0; i < effects.size; i++)
+            {
+                JSONValue effect = effects[i];
+                String effectName = effect.Get("name").GetString();
+                if (effectName == "patch")
                 {
-                    String pluginName = plugins[i].Get("name").GetString();
-                    if (pluginName == "mirror")
+                    JSONValue texture = effect.Get("texture");
+                    if (!texture.isObject)
+                        continue;
+                    if (texture.Contains("auto_mirror"))
                         return;
                 }
             }
@@ -214,7 +247,8 @@ namespace MaskEngine
             plugins.Push(mirrorJSON);
             maskJson.Set("plugins", plugins);
 
-            log.Info("Loader : auto added mirror plugin");  
+            log.Info("Loader : auto added mirror plugin");
         }
     }
+
 }
