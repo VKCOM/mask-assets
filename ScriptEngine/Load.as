@@ -217,7 +217,11 @@ namespace MaskEngine
 
             JSONValue plugins = maskJson.Get("plugins");
             if (!plugins.isArray)
-                return;
+            {
+                JSONFile tempFile();
+                tempFile.FromString("{\"plugins\" : []}");
+                plugins = tempFile.GetRoot();
+            }
 
             // check if mirror added manually
             for (uint i = 0; i < plugins.size; i++)

@@ -30,6 +30,7 @@ namespace MaskEngine
                 todo : add all dirs = done
                 todo : respect priority of dirs
                 todo : add detatch
+                todo : check which file fired event
 
             */
             bool needReload = false;
@@ -80,9 +81,10 @@ namespace MaskEngine
 
             // UnloadMask();
             // maskScene = null;
-            log.Error("HotReload.as : handle file changed");
 
+            log.Error("HotReload.as : handle file changed");
             log.Error(scriptFile.name);
+
             // bool res = scriptFile.Execute("void UnloadMask()");
             UnloadMask();
 
@@ -181,61 +183,6 @@ namespace MaskEngine
             }
             log.Error(" ");
         }
-
-        // void C(StringHash eventType, VariantMap &eventData)
-        // {
-        //     log.Error("Lol");
-        //     CheckFilesUpdated();
-        // }
     }
 
 }
-
-// Array<Component @> instances = scene.GetComponents("ScriptInstance");
-// for (uint i = 0; i < 1; i++)
-// {
-//     ScriptInstance @instance = cast<ScriptInstance>(instances[i]);
-//     String fileName = "main.as";// instance.scriptFile.name;
-//     File@ file = cache.GetFile(fileName);
-//     VectorBuffer file_vb = file.ReadVectorBuffer(file.size);
-
-//     int hash = sdbm(file_vb);
-//     if (checkSumMap.Contains(fileName))
-//     {
-//         bool changed = (checkSumMap[fileName].GetInt() != hash);
-//         if (changed)
-//         {
-//             log.Error(changed);
-//             cache.ReloadResourceWithDependencies("Shaders/GLSL/color.glsl");
-//             cache.ReloadResourceWithDependencies(fileName);
-//             ScriptFile@ mainScript = cache.GetResource("ScriptFile", fileName);
-//             mainScript.Execute("void Init()");
-
-//             log.Error(scriptFile.name);
-//             // checkSumMap = VariantMap();
-
-//         }
-//         // log.Error(hash);
-//     }
-
-//     checkSumMap[fileName] = Variant(hash);
-
-//     file.Close();
-
-// }
-
-// int sdbm(VectorBuffer vb)
-// {
-//     // """
-//     // Function implements sdbm hash, easy to use, great for bits scrambling.
-//     // iterates over each character in the given string and applies function to each of
-//     // them.
-
-//     int hash = 0;
-//     for (uint i = 0; i < vb.size; i += 4)
-//     {
-//         vb.Seek(i);
-//         hash = vb.ReadInt() + (hash << 6) + (hash << 16) - hash;
-//     }
-//     return hash;
-// }
