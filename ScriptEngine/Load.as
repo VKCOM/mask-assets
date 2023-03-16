@@ -211,37 +211,33 @@ namespace MaskEngine
 
         void AddMirrorCameraPlugin(JSONValue &maskJson)
         {
+            // check if used auto_mirror
             JSONValue effects = maskJson.Get("effects");
-            if (!effects.isArray)
-                return;
-
-            JSONValue plugins = maskJson.Get("plugins");
-            if (!plugins.isArray)
+            if (effects.isArray)
             {
-                JSONFile tempFile();
-                tempFile.FromString("{\"plugins\" : []}");
-                plugins = tempFile.GetRoot();
+                for (uint i = 0; i < effects.size; i++)
+                {
+                    JSONValue effect = effects[i];
+                    String effectName = effect.Get("name").GetString();
+                    if (effectName == "patch")
+                    {
+                        JSONValue texture = effect.Get("texture");
+                        if (!texture.isObject)
+                            continue;
+                        if (texture.Contains("auto_mirror"))
+                            return;
+                    }
+                }
             }
 
             // check if mirror added manually
-            for (uint i = 0; i < plugins.size; i++)
+            JSONValue plugins = maskJson.Get("plugins");
+            if (plugins.isArray)
             {
-                String pluginName = plugins[i].Get("name").GetString();
-                if (pluginName == "mirror")
-                    return;
-            }
-
-            // check if used auto_mirror
-            for (uint i = 0; i < effects.size; i++)
-            {
-                JSONValue effect = effects[i];
-                String effectName = effect.Get("name").GetString();
-                if (effectName == "patch")
+                for (uint i = 0; i < plugins.size; i++)
                 {
-                    JSONValue texture = effect.Get("texture");
-                    if (!texture.isObject)
-                        continue;
-                    if (texture.Contains("auto_mirror"))
+                    String pluginName = plugins[i].Get("name").GetString();
+                    if (pluginName == "mirror")
                         return;
                 }
             }
