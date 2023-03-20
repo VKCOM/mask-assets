@@ -305,6 +305,8 @@ class model3d : BaseEffectImpl
     bool _created = false;
     Array<VariantMap> poiData;
 
+    // Child wiggle effect
+    BaseEffect@ _wiggly;
     // Array of "materials" from mask.json
     Array<Material@> materials;
     // Texture animations for specified materials
@@ -443,6 +445,14 @@ class model3d : BaseEffectImpl
         Array<String> reservedField;
         reservedField.Push("animation");
         reservedField.Push("material");
+        
+        // Wiggle injection point
+        if (effect_desc.Contains("wiggle"))
+        {
+            @_wiggly = AddChildEffect("wiggle");
+            _wiggly.Init(effect_desc, this);
+        }
+
         _inited = LoadAddons(effect_desc, reservedField);
 
         return _inited;
