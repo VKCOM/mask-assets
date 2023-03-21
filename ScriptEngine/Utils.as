@@ -178,6 +178,18 @@ bool    ReadVector3(const JSONValue &jval, Vector3 &dst, bool allow_vector2 = fa
     return false;
 }
 
+bool    ReadVector2(const JSONValue &jval, Vector2 &dst)
+{
+    Array<float> v = { dst.x, dst.y };
+    uint n = ReadFloatVector(jval, v, 2);
+    if (n == 2)
+    {
+        dst = Vector2(v);
+        return true;
+    }
+    return false;
+}
+
 bool  ReadPositionValue(const JSONValue &jval, BillboardPosition &position)
 {
     if (jval.isNumber)
