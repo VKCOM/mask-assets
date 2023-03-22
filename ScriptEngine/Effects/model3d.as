@@ -23,12 +23,15 @@ class model_texture_animation
     // From artist's settings in 'mask.json'
     String trigger_start;
     String trigger_stop;
+    float fps = 30.0;
 
     // Runtime variables
+    private bool hasTimeline = false;
+    private bool isWaitingForTrigger = true;
     private bool running = false;
     private float elapsedTime = 0.0;
-    private float fps = 30.0;
     private float duration;
+    private ValueAnimation animation;
 
     // Construct with neccessary parameters
     model_texture_animation(Material@ mat, String& type, JSONValue& texture_desc)
@@ -52,7 +55,15 @@ class model_texture_animation
         if (!parse_description(texture_desc))
             log.Error("model3d: Could not parse material textures.");
 
-        duration = texturePaths.length / fps;
+        if (hasTimeline)
+            duration = animation.GetEndTime() - animation.GetBeginTime();
+        else if (fps > 0.0)
+            duration = texturePaths.length / fps;
+        else
+        {
+            log.Error("model3d: Unexpected fps value for material texture animation.");
+            return;
+        }
 
         // Sunscriptions
         if (trigger_start == "tap" || trigger_stop == "tap")
@@ -105,8 +116,6 @@ class model_texture_animation
             if (texture_desc.Contains("animation"))
             {
                 JSONValue animation_parameters = texture_desc.Get("animation");
-                if (animation_parameters.Contains("fps"))
-                    fps = animation_parameters.Get("fps").GetFloat();
 
                 if (animation_parameters.Contains("type"))
                     animation_type = animation_parameters.Get("type").GetString();
@@ -116,6 +125,86 @@ class model_texture_animation
 
                 if (animation_parameters.Contains("trigger_stop"))
                     trigger_stop = animation_parameters.Get("trigger_stop").GetString();
+                
+                if (animation_parameters.Contains("fps"))
+                    fps = animation_parameters.Get("fps").GetFloat();
+
+                if (animation_parameters.Contains("timeline"))
+                {
+                    JSONValue timeline = animation_parameters.Get("timeline");
+                    if (timeline.isArray && timeline.size > 0)
+                    {
+                        animation.valueType = VAR_INT;
+                        animation.interpolationMethod = IM_NONE;
+                        float time = 0.0;
+
+                        uint frame = 0;
+                        float lastDuration = 0.0;
+                        while (frame < timeline.size)
+                        {
+                            animation.SetKeyFrame(time * 0.001, frame);
+                            lastDuration = timeline[frame].GetInt();
+                            time += lastDuration;
+                            frame += 1;
+                        }
+
+                        if (texturePaths.length == timeline.size)
+                        {
+                            animation.SetKeyFrame(time * 0.001, frame);
+                        }
+                        else if (texturePaths.length > timeline.size)
+                        {
+                            uint remaining = texturePaths.length - timeline.size;
+                            for (uint i = 0; i < remaining; ++i)
+                            {
+                                animation.SetKeyFrame(time * 0.001, texturePaths.length - remaining + i);
+                                time += lastDuration;
+                            }
+                            animation.SetKeyFrame((time + lastDuration) * 0.001, texturePaths.length - 1);
+                        }
+                    }
+                    else
+                    {
+                        log.Error("Invalid timeline value in model3d animation");
+                        return false;
+                    }
+                    hasTimeline = true;
+                }
+
+                if (animation_parameters.Contains("timeline_ex"))
+                {
+                    JSONValue timeline_ex = animation_parameters.Get("timeline_ex");
+                    if (timeline_ex.isArray && timeline_ex.size > 0)
+                    {
+                        animation.valueType = VAR_INT;
+                        animation.interpolationMethod = IM_NONE;
+                        float time = 0.0;
+                        uint frame = 0;
+
+                        for (uint i = 0; i < timeline_ex.size; ++i)
+                        {
+                            if (timeline_ex[i].isArray && timeline_ex[i].size == 2)
+                            {
+                                frame = timeline_ex[i][0].GetInt();
+                                animation.SetKeyFrame(time * 0.001, frame);
+                                time += timeline_ex[i][1].GetInt();
+                            }
+                            else
+                            {
+                                animation.SetKeyFrame(time * 0.001, frame);
+                                time += timeline_ex[i].GetInt();
+                            }
+                            frame += 1;
+                        }
+                        animation.SetKeyFrame(time * 0.001, frame - 1);
+                    }
+                    else
+                    {
+                        log.Error("Invalid timeline_ex value in model3d animation");
+                        return false;
+                    }
+                    hasTimeline = true;
+                }
             }
 
             return true;
@@ -126,13 +215,18 @@ class model_texture_animation
 
     void start()
     {
+        // if (animation_type == "once" && !isWaitingForTrigger)
+        if (!isWaitingForTrigger)
+            return;
+
         running = true;
         elapsedTime = 0.0;
     }
 
-    void stop()
+    void stop(bool waitForTrigger)
     {
         running = false;
+        isWaitingForTrigger = waitForTrigger;
     }
 
     private void HandleTapEvent(StringHash eventType, VariantMap& eventData)
@@ -143,19 +237,22 @@ class model_texture_animation
                 start();
             
             else if (trigger_stop == "tap" && running)
-                stop();
+                stop(trigger_start != "face_found");
         }
     }
 
     private void HandleFaceDetected(StringHash eventType, VariantMap& eventData)
     {
-        bool detected = eventData["Detected"].GetBool();
-
-        if (detected && trigger_start == "face_found" && !running)
-            start();
-        
-        if (!detected && trigger_stop == "face_lost" && running)
-            stop();
+        if (eventData["Detected"].GetBool())
+        {
+            if (trigger_start == "face_found" && !running)
+                start();
+        }
+        else
+        {
+            if (trigger_stop == "face_lost" || trigger_start == "face_found" && !running)
+                stop(true);
+        }
     }
 
     private void HandleUpdate(StringHash eventType, VariantMap& eventData)
@@ -165,14 +262,25 @@ class model_texture_animation
             float dt = eventData["TimeStep"].GetFloat();
             elapsedTime += dt;
 
-            uint frame = uint((elapsedTime * fps) % texturePaths.length);
+            uint frame;
+            if (!hasTimeline)
+            {
+                frame = uint((elapsedTime * fps) % texturePaths.length);
+            }
+            else
+            {
+                float scaledTime = elapsedTime - uint(elapsedTime / duration) * duration;
+                frame = animation.GetAnimationValue(scaledTime).GetInt();
+            }
 
             if (animation_type == "once" && elapsedTime >= duration)
             // if (animation_type == "once" && frame >= texturePaths.length)
             {
-                stop();
+                stop(trigger_start == "tap");
                 return;
             }
+
+            log.Info("frame: " + frame);
 
             String texture_path = texturePaths[frame];
             Texture@ texture = cache.GetResource(texture_resource, texture_path);
@@ -196,7 +304,8 @@ class model3d : BaseEffectImpl
     Node@ _anchorNode;
     bool _created = false;
     Array<VariantMap> poiData;
-    //Child wiggle effect
+
+    // Child wiggle effect
     BaseEffect@ _wiggly;
     // Array of "materials" from mask.json
     Array<Material@> materials;
@@ -223,7 +332,7 @@ class model3d : BaseEffectImpl
         Node@ faceNode = scene.GetChild(_faceNodeName);
         if (faceNode is null)
         {
-            log.Error("model3d: Cannot find face node.");
+            log.Error(GetName() + ": Cannot find face node.");
             return false;
         }
 
@@ -256,7 +365,7 @@ class model3d : BaseEffectImpl
         }
 
         // Create Model Node
-        _node = _anchorNode.CreateChild("model3d");
+        _node = _anchorNode.CreateChild(GetName());
 
         // Add tags to Model Node
         AddTags(effect_desc, _node);
@@ -264,7 +373,7 @@ class model3d : BaseEffectImpl
         // Create Model
         if (!CreateModel(effect_desc))
         {
-            log.Error("model3d: Failed to init Model");
+            log.Error(GetName() + ": Failed to init Model");
             return false;
         }
 
@@ -272,7 +381,7 @@ class model3d : BaseEffectImpl
         if (effect_desc.Contains("animation")) 
             if (!CreateAnimationModel(effect_desc.Get("animation")))
             {
-                log.Error("model3d: Failed to init animation");
+                log.Error(GetName() + ": Failed to init animation");
                 return false;
             }
 
@@ -337,8 +446,7 @@ class model3d : BaseEffectImpl
         reservedField.Push("animation");
         reservedField.Push("material");
         
-        //wiggle injection point
-
+        // Wiggle injection point
         if (effect_desc.Contains("wiggle"))
         {
             @_wiggly = AddChildEffect("wiggle");
@@ -359,14 +467,14 @@ class model3d : BaseEffectImpl
         String modelFilePath = effect_desc.Get("model").GetString();
         if (modelFilePath.empty)
         {
-            log.Error("model3d: Model file not specified");
+            log.Error(GetName() + ": Model file not specified");
             return false;
         }
 
         Model@ model = cache.GetResource("Model", modelFilePath);
         if (model is null)
         {
-            log.Error("model3d: Failed to load model: " + modelFilePath);
+            log.Error(GetName() + ": Failed to load model: " + modelFilePath);
             return false;
         }
 
@@ -397,12 +505,33 @@ class model3d : BaseEffectImpl
         // XMLFile@ sky = cache.GetResource("XMLFile", "Textures/Sky.xml");
         // Print(sky.ToString());
 
-        // Parse multiple or single materials
+        // Parse single or multiple materials
+        Material@ mat;
         if (effect_desc.Get("material").isArray)
+        {
             for (uint i = 0; i < effect_desc.Get("material").size; i++)
-                materials.Push(ParseMaterial(effect_desc.Get("material")[i]));
+            {
+                Material@ mat = ParseMaterial(effect_desc.Get("material")[i]); 
+                if (mat is null)
+                {
+                    log.Error("Could not parse one or more materials.");
+                    return false;
+                }
+                materials.Push(mat);
+            }
+        }
         else
-            materials.Push(ParseMaterial(effect_desc.Get("material")));
+        {
+            Material@ mat = ParseMaterial(effect_desc.Get("material"));
+            if (mat is null)
+            {
+                log.Error("Could not parse one or more materials.");
+                return false;
+            }
+            materials.Push(mat);
+        }
+        
+
 
         // Amount of materials should be the same as the amount of
         // geometries in the model loaded previously
@@ -410,7 +539,7 @@ class model3d : BaseEffectImpl
         uint numMaterials = materials.length;
         if (numMaterials > 1 && numGeometries != numMaterials)
         {
-            log.Error("model3d: Invalid number of materials for 3d model '" + modelFilePath
+            log.Error(GetName() + ": Invalid number of materials for 3d model '" + modelFilePath
                 + "' (it has " + numGeometries + " and you specify "
                 + numMaterials + ")");
             return false;
@@ -511,10 +640,15 @@ class model3d : BaseEffectImpl
                 // Animation IS specified for this texture
                 if (value.isObject)
                 {
-                    textureAnimations.Push(model_texture_animation(material, key, value));
                     if (value.Contains("texture"))
+                    {
                         valueString = value.Get("texture").GetString();
+                        textureAnimations.Push(
+                            model_texture_animation(material, key, value)
+                        );
+                    }
                 }
+
                 textures.Set(key, JSONValue(valueString));
             }
 
@@ -543,7 +677,7 @@ class model3d : BaseEffectImpl
         // Parse parameters from mask.json
         if (!ani_desc.Get("file").isString)
         {
-            log.Error("model3d: Animation file should be a the path to animation file");
+            log.Error(GetName() + ": Animation file should be a the path to animation file");
             return false;
         }
 
@@ -607,7 +741,7 @@ class model3d : BaseEffectImpl
                 // Call `Init` method of `BaseEvent` class
                 if (!binaryEvent.Init(jsonFile.GetRoot(), this))
                 {
-                    log.Error("model3d: Cannot init " + triggerStart);
+                    log.Error(GetName() + ": Cannot init " + triggerStart);
                     return false;
                 }
             }
@@ -635,7 +769,7 @@ class model3d : BaseEffectImpl
                 // Call `Init` method of `BaseEvent` class
                 if (!startEvent.Init(startJsonFile.GetRoot(), this))
                 {
-                    log.Error("model3d: Cannot init " + triggerStart);
+                    log.Error(GetName() + ": Cannot init " + triggerStart);
                     return false;
                 }
 
@@ -649,7 +783,7 @@ class model3d : BaseEffectImpl
                     if (stopEvent is null)
                         return false;
 
-                    String json;
+                    json;
                     if (ani_desc.Contains("hide_delay"))
                         json = "{ \"name\" : \"stop_animation\"," +
                             "\"delay\":" + ani_desc.Get("hide_delay").GetFloat() + "}";
@@ -661,7 +795,7 @@ class model3d : BaseEffectImpl
 
                     if (!stopEvent.Init(stopJsonFile.GetRoot(), this))
                     {
-                        log.Error("model3d: Cannot init " + triggerStop);
+                        log.Error(GetName() + ": Cannot init " + triggerStop);
                         return false;
                     }
                 }
