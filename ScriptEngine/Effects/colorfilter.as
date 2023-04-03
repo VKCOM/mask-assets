@@ -10,7 +10,7 @@ class colorfilter : BaseEffectImpl
     private BaseEffect@ _colorPatchEffect;
 
     private String texturePath = "ColorFilter/lookup.png";
-    private String patchConfigString = "";
+    private JSONValue patchConfig;
 
 
     bool Init(const JSONValue& effect_desc, BaseEffect@ parent) override
@@ -20,6 +20,7 @@ class colorfilter : BaseEffectImpl
             return false;
         }
 
+        patchConfig = JSONValue();
         ReadConfiguration(effect_desc);
 
         if (!cache.Exists(texturePath))
@@ -29,16 +30,16 @@ class colorfilter : BaseEffectImpl
         }
 
         @_colorPatchEffect = AddChildEffect("patch");
-        if (_colorPatchEffect !is null)
+        if (_colorPatchEffect is null)
         {
-            JSONFile@ jsonFile = JSONFile();
-            jsonFile.FromString(patchConfigString);
-
-            if (!_colorPatchEffect.Init(jsonFile.GetRoot(), parent))
-            {
-                log.Error("colorfilter: Cannot init patch");
-                return false;
-            }
+            log.Error("colorfilter: patch effect is null");
+            return false;
+        }
+        
+        if (!_colorPatchEffect.Init(patchConfig, parent))
+        {
+            log.Error("colorfilter: Cannot init patch");
+            return false;
         }
 
         AddTags(effect_desc, _colorPatchEffect.GetNode());
@@ -49,75 +50,55 @@ class colorfilter : BaseEffectImpl
 
     private void ReadConfiguration(const JSONValue& effect_desc)
     {
-        patchConfigString     += "{\n  \"name\": \"patch\"";
-
         if (effect_desc.Contains("tag") && effect_desc.Get("tag").isString)
-            patchConfigString += ",\n  \"tag\": \"" + effect_desc.Get("tag").GetString() + "\"";
+            patchConfig.Set("tag", effect_desc.Get("tag"));
 
         if (effect_desc.Contains("anchor") && effect_desc.Get("anchor").isString)
-            patchConfigString += ",\n  \"anchor\": \"" + effect_desc.Get("anchor").GetString() + "\"";
+            patchConfig.Set("anchor", effect_desc.Get("anchor"));
         else
-            patchConfigString += ",\n  \"anchor\": \"fullscreen\"";
+            patchConfig.Set("anchor", JSONValue("fullscreen"));
 
-        patchConfigString     += ",\n  \"texture\": {";
-
+        JSONValue textureValue;
         if (effect_desc.Contains("lookup") && effect_desc.Get("lookup").isString)
-        {
             texturePath = effect_desc.Get("lookup").GetString();
-            patchConfigString += "\n    \"texture\": \"" + texturePath + "\"";
-        }
         else
-        {
             log.Info("colorfilter: lookup not specified, using default \"" + texturePath +  "\"");
-            patchConfigString += "\n    \"texture\": \"" + texturePath + "\"";
-        }
-
+        textureValue.Set("texture", JSONValue(texturePath));
+        JSONValue rgba; rgba.Push(JSONValue(0.0)); rgba.Push(JSONValue(0.0)); rgba.Push(JSONValue(0.0)); 
         if (effect_desc.Contains("intensity") && effect_desc.Get("intensity").isNumber)
-            patchConfigString += ",\n    \"color\": [0.0, 0.0, 0.0, " + effect_desc.Get("intensity").GetFloat() + "]";
+            rgba.Push(effect_desc.Get("intensity"));
         else
-            patchConfigString += ",\n    \"color\": [0.0, 0.0, 0.0, " + 1.0 + "]";
-
-        patchConfigString     += ",\n    \"shader\": \"ColorFilter\""
-                              +  ",\n    \"ps_shader_defs\": \"INTENSITY_VALUE\""
-                              +  "\n  }";
+            rgba.Push(JSONValue(0.75));
+        textureValue.Set("color", rgba);
+        textureValue.Set("shader", JSONValue("ColorFilter"));
+        textureValue.Set("ps_shader_defs", JSONValue("INTENSITY_VALUE"));
+        patchConfig.Set("texture", textureValue);
 
         if (effect_desc.Contains("allow_rotation") && effect_desc.Get("allow_rotation").isBool)
-            patchConfigString += ",\n  \"allow_rotation\": " + effect_desc.Get("allow_rotation").GetBool();
+            patchConfig.Set("allow_rotation", effect_desc.Get("allow_rotation"));
 
         if (effect_desc.Contains("visible") && effect_desc.Get("visible").isString)
-            patchConfigString += ",\n  \"visible\": \"" + effect_desc.Get("visible").GetString() + "\"";
-
+            patchConfig.Set("visible", effect_desc.Get("visible"));
+        else
+            patchConfig.Set("visible", JSONValue("always"));
+            
         if (effect_desc.Contains("show_delay") && effect_desc.Get("show_delay").isNumber)
-            patchConfigString += ",\n  \"show_delay\": " + effect_desc.Get("show_delay").GetFloat();
+            patchConfig.Set("show_delay", effect_desc.Get("show_delay"));
 
         if (effect_desc.Contains("hide_delay") && effect_desc.Get("hide_delay").isNumber)
-            patchConfigString += ",\n  \"hide_delay\": " + effect_desc.Get("hide_delay").GetFloat();
+            patchConfig.Set("hide_delay", effect_desc.Get("hide_delay"));
 
         if (effect_desc.Contains("fit") && effect_desc.Get("fit").isString)
-            patchConfigString += ",\n  \"fit\": \"" + effect_desc.Get("fit").GetString() + "\"";
+            patchConfig.Set("fit", effect_desc.Get("fit"));
 
         if (effect_desc.Contains("size") && effect_desc.Get("size").isArray)
-        {
-            Vector2 size;
-            ReadVector2(effect_desc.Get("size"), size);
-            patchConfigString += ",\n  \"size\": [" + size.x + ", " + size.y + "]";
-        }
+            patchConfig.Set("size", effect_desc.Get("size"));
 
         if (effect_desc.Contains("offset") && effect_desc.Get("offset").isArray)
-        {
-            Vector3 offset;
-            ReadVector3(effect_desc.Get("offset"), offset);
-            patchConfigString += ",\n  \"offset\": [" + offset.x + ", " + offset.y + ", " + offset.z + "]";
-        }
+            patchConfig.Set("offset", effect_desc.Get("offset"));
 
         if (effect_desc.Contains("rotation") && effect_desc.Get("rotation").isArray)
-        {
-            Vector3 rotation;
-            ReadVector3(effect_desc.Get("rotation"), rotation);
-            patchConfigString += ",\n  \"rotation\": [" + rotation.x + ", " + rotation.y + ", " + rotation.z + "]";
-        }
-
-        patchConfigString     += "\n}";
+            patchConfig.Set("rotation", effect_desc.Get("rotation"));
     }
 
     void _SetVisible(bool visible) override
