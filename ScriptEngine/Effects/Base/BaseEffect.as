@@ -68,7 +68,7 @@ BaseEffect@ CreateEffect(String name, bool& wasSkip)
 
     wasSkip = false;
     log.Info("Start create " + name);
-    String moduleName = "ScriptEngine/Effects/" + name + ".as";
+    String moduleName = ResolveModulePath(name);
     ScriptObject@ obj = scene.CreateScriptObject(moduleName, "MaskEngine::" + name);
 
     if (obj is null)
@@ -77,6 +77,21 @@ BaseEffect@ CreateEffect(String name, bool& wasSkip)
         return null;
     }
     return cast<BaseEffect>(obj);
+}
+
+
+String ResolveModulePath(const String& effectName)
+{
+    String parentPath = "ScriptEngine/Effects/";
+    if (
+        effectName.StartsWith("gesture_", false) ||
+        effectName.StartsWith("mouth_", false) ||
+        effectName.StartsWith("face_", false) ||
+        effectName == "tap" || 
+        effectName == "nod"
+    )
+        parentPath += "user_events/";
+    return parentPath + effectName + ".as";
 }
 
 
