@@ -1,5 +1,6 @@
 #include "ScriptEngine/Effects/Base/BaseEffect.as"
 #include "ScriptEngine/Effects/Base/BaseAnimation.as"
+#include "ScriptEngine/Utils.as"
 
 
 namespace MaskEngine
@@ -60,6 +61,9 @@ class model_texture_animation
 
         if (trigger_start == "face_found" || trigger_stop == "face_lost")
             SubscribeToEvent("UpdateFaceDetected", "HandleFaceDetected");
+
+        if (HAND_GESTURE_NAMES.Find(trigger_start) != -1 || HAND_GESTURE_NAMES.Find(trigger_stop) != -1)
+            SubscribeToEvent("GestureEvent", "HandleEventName");
 
         SubscribeToEvent("Update", "HandleUpdate");
     }
@@ -155,6 +159,17 @@ class model_texture_animation
             start();
         
         if (!detected && trigger_stop == "face_lost" && running)
+            stop();
+    }
+
+    private void HandleGestureEvent(StringHash eventType, VariantMap& eventData)
+    {
+        const String gesture = eventData["Gesture"].GetString();
+        
+        if (!running && trigger_start == gesture)
+            start();
+
+        if (running && trigger_stop == gesture)
             stop();
     }
 
