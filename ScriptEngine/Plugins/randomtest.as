@@ -154,7 +154,7 @@ class randomtest : BasePlugin
             SubscribeToEvent("MouthTrigger", "HandleMouthTrigger");
         else if (trigger.Contains("tap"))
             SubscribeToEvent("MouseEvent", "HandleMouseEvent");
-        else if (HAND_GESTURE_NAMES.Fin(gesture) != -1)
+        else if (HAND_GESTURE_NAMES.Find(gesture) != -1)
             SubscribeToEvent("GestureEvent", "HandleGestureEvent");
 
         return true;
