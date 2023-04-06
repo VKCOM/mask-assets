@@ -68,7 +68,7 @@ BaseEffect@ CreateEffect(String name, bool& wasSkip)
 
     wasSkip = false;
     log.Info("Start create " + name);
-    String moduleName = ResolveModulePath(name);
+    String moduleName = "ScriptEngine/Effects/" + name + ".as";
     ScriptObject@ obj = scene.CreateScriptObject(moduleName, "MaskEngine::" + name);
 
     if (obj is null)
@@ -79,6 +79,9 @@ BaseEffect@ CreateEffect(String name, bool& wasSkip)
     return cast<BaseEffect>(obj);
 }
 
+/*
+    For future update where all user event effects will be
+    placed into a separate directory.
 
 String ResolveModulePath(const String& effectName)
 {
@@ -93,6 +96,7 @@ String ResolveModulePath(const String& effectName)
         parentPath += "user_events/";
     return parentPath + effectName + ".as";
 }
+*/
 
 
 // note: this should correspond to face_recognizer's setup
