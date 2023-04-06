@@ -41,7 +41,7 @@ class maskswitching : BasePlugin
         if (trigger == "mouth") SubscribeToEvent("MouthTrigger", "HandleMouthTrigger");
         else if (trigger == "tap") SubscribeToEvent("MouseEvent", "HandleTapEvent");
         else if (trigger == "directional_tap") SubscribeToEvent("MouseEvent", "HandleDirectionalTapEvent");
-        else if (HAND_GESTURE_NAMES.Find(gesture) != -1) SubscribeToEvent("GestureEvent", "HandleGestureEvent");
+        else if (MaskEngine::HAND_GESTURE_NAMES.Find(trigger) != -1) SubscribeToEvent("GestureEvent", "HandleGestureEvent");
 
         SubscribeToEvent("PostUpdate", "HandlePostUpdate");
         SubscribeToEvent("UpdateFaceDetected", "HandleUpdateFaceDetected");

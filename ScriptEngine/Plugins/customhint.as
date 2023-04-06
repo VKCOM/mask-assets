@@ -48,7 +48,7 @@ class customhint : BasePlugin
             SubscribeToEvent("MouthTrigger", "HandleMouthTrigger");
         else if (trigger.Contains("tap"))
             SubscribeToEvent("MouseEvent", "HandleMouseEvent");
-        else if (HAND_GESTURE_NAMES.Find(gesture) != -1)
+        else if (MaskEngine::HAND_GESTURE_NAMES.Find(trigger) != -1)
             SubscribeToEvent("GestureEvent", "HandleGestureEvent");
 
         return true;
