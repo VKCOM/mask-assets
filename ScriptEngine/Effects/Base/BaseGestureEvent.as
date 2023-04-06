@@ -6,6 +6,8 @@ namespace MaskEngine
 
 class BaseGestureEvent : BaseEvent
 {
+    private const String name;
+
     // Init from code
     bool Init(BaseEffect@ parent) override
     {
@@ -24,14 +26,13 @@ class BaseGestureEvent : BaseEvent
         if (gesture == "OTHER" || gesture == "UNDEFINED_GESTURE")
             return;
 
-        if (NeedCall(gesture))
+        if (name == gesture)
             ApplyChildren();
     }
 
-    bool NeedCall(const String& gestureName)
+    String GetName() override
     {
-        log.Warning("Override this method in inherited class");
-        return false;
+        return "gesture_" + name.ToLower();
     }
 }
 

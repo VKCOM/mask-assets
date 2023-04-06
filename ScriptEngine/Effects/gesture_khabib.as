@@ -6,16 +6,9 @@ namespace MaskEngine
 
 class gesture_khabib : BaseGestureEvent
 {
-    private const String name = "KHABIB";
-
-    bool NeedCall(const String& gestureName) override
+    gesture_khabib()
     {
-        return name == gestureName;
-    }
-
-    String GetName() override
-    {
-        return "gesture_" + name.ToLower();
+        name = "KHABIB";
     }
 }
 

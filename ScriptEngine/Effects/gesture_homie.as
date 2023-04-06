@@ -6,16 +6,9 @@ namespace MaskEngine
 
 class gesture_homie : BaseGestureEvent
 {
-    private const String name = "HOMMIE";
-
-    bool NeedCall(const String& gestureName) override
+    gesture_homie()
     {
-        return name == gestureName;
-    }
-
-    String GetName() override
-    {
-        return "gesture_" + name.ToLower();
+        name = "HOMMIE";
     }
 }
 

@@ -6,16 +6,9 @@ namespace MaskEngine
 
 class gesture_thumb_down : BaseGestureEvent
 {
-    private const String name = "THUMB_DOWN";
-
-    bool NeedCall(const String& gestureName) override
+    gesture_thumb_down()
     {
-        return name == gestureName;
-    }
-
-    String GetName() override
-    {
-        return "gesture_" + name.ToLower();
+        name = "THUMB_DOWN";
     }
 }
 

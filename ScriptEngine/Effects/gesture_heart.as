@@ -6,16 +6,9 @@ namespace MaskEngine
 
 class gesture_heart : BaseGestureEvent
 {
-    private const String name = "HEART";
-
-    bool NeedCall(const String& gestureName) override
+    gesture_heart()
     {
-        return name == gestureName;
-    }
-
-    String GetName() override
-    {
-        return "gesture_" + name.ToLower();
+        name = "HEART";
     }
 }
 
