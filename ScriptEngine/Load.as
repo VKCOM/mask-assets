@@ -91,6 +91,9 @@ namespace MaskEngine
             // Trying to fix front camera mirror issue
             AddMirrorCameraPlugin(maskJson);
 
+            // change shader program for input video stream
+            FixYUV();
+
             // All effects are added to the mask after this call
             LoadEffects(maskJson, mask);
 
@@ -187,10 +190,8 @@ namespace MaskEngine
 
         void FixYUV()
         {
-            // change shader program for input video stream
             String platform = GetPlatform();
             bool runOnDesktop = (platform == "Windows" || platform == "Mac OS X");
-
             RenderPath @defaultRP = renderer.viewports[0].renderPath;
 
             String yuvShaderName = runOnDesktop ? "Yuv2Rgb" : "CopyFramebuffer";
