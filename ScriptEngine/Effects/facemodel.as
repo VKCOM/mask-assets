@@ -36,6 +36,14 @@ class facemodel : BaseEffectImpl
         {
             return false;
         }
+
+        if (!effect_desc.Get("pass").isString && GetGlobalVar("facemodel_version").GetInt() >= 2) {
+            // Add clear depth after facemodel, because face model writes a depth to
+            // fix artifacts on head rotation around vertical axe.
+            RenderPath@ defaultRP = renderer.defaultRenderPath;
+            defaultRP.Append(cache.GetResource("XMLFile", "RenderPaths/clear_depth.xml"));
+        }
+
         int facemodel_version = GetGlobalVar(FACEMODEL_VERSION).GetInt(); 
 //        Print("facemodel_version=" + facemodel_version );
         

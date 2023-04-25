@@ -98,6 +98,16 @@ class texture : BaseEffectImpl
             @mat = file_mat.Clone();
         }
 
+        // Use special technique for facemodel to fix artifacts on rotation.
+        bool disableFacemodelTechnique = false;
+        if (texture_desc.Get("DisableFacemodelTechnique").isBool)
+            disableFacemodelTechnique = texture_desc.Get("DisableFacemodelTechnique").GetBool();
+        // Disable facemodel technique for old recognition.
+        if (GetGlobalVar("facemodel_version").GetInt() < 2) {
+            disableFacemodelTechnique = true;
+        }
+        String facemodelPrefix = _ownerEffect.GetName() == "facemodel" && !disableFacemodelTechnique ? "Facemodel" : "";
+
         // apply blend mode
         if (!blend_mode.empty)
         {
@@ -124,7 +134,7 @@ class texture : BaseEffectImpl
             else
             {
                 // complex blend
-                tech_name = "Techniques/TextureEffect.xml";
+                tech_name = "Techniques/TextureEffect" + facemodelPrefix + ".xml";
                 shader_name = shader_name.empty ? "ComplexBlend" : shader_name;
                 shader_defs_ps += " BLEND_FN=BF_" + blend_mode;
                 if (texture_desc.Get("UseAlphaMask").GetBool())
@@ -140,7 +150,7 @@ class texture : BaseEffectImpl
 
         if (!shader_name.empty)
         {
-            tech_name = "Techniques/TextureEffect.xml";
+            tech_name = "Techniques/TextureEffect" + facemodelPrefix + ".xml";
         }
 
         // check for tech name override
