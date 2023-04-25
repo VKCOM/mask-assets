@@ -151,38 +151,7 @@ namespace MaskEngine
             renderer.viewports[0] = viewport;
         }
 
-        void PrintDebugInfoRP()
-        {
-            for (uint j = 0; j < renderer.numViewports; j++)
-            {
-                RenderPath @rp = renderer.viewports[j].renderPath;
-                Print("renderPath " + j + " ====================================");
-                Print("camera " + (renderer.viewports[j].camera.orthographic ? "ortho" : "persp"));
-                for (uint i = 0; i < rp.numCommands; i++)
-                {
-                    RenderPathCommand command = rp.commands[i];
-                    Print(command.pass.ToUpper() + " = " + Variant(i).ToString() + ", tag = " + command.tag + ", type = " + command.type);
-
-                    for (TextureUnit k = TU_DIFFUSE; k < MAX_TEXTURE_UNITS; k++)
-                    {
-                        String textureUnitStr = GetTextureUnitName(k);
-                        String name = command.get_textureNames(k);
-                        if (name != "")
-                            Print("  " + textureUnitStr + " = " + name);
-                        // Print("  " + textureUnitStr);
-                    }
-                    Print("    psdef = " + command.pixelShaderDefines);
-                    Print("    vsdef = " + command.vertexShaderDefines);
-                }
-
-                for (uint i = 0; i < rp.numRenderTargets; i++)
-                {
-                    RenderTargetInfo rt = rp.renderTargets[i];
-                    Print("-- rt name = " + rt.name + ", tag = " + rt.tag);
-                }
-            }
-            log.Error(" ");
-        }
+    
     }
 
 }
