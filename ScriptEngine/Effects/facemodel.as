@@ -3,11 +3,14 @@
 namespace MaskEngine
 {
 
-String []DEFAULT_TEXCOORD_FILE = {"Facemodel/default_mapping.bin", "Facemodel/sym_tex_coords_compatible.bin", "Facemodel/tex_coords_mediapipe.bin"};
-String []DEFAULT_INDEXES_FILE  = {"Facemodel/GENERATED_decimated_patched_hole_indices.bin","Facemodel/fm_render_ind.bin", "Facemodel/indexes_mediapipe.bin"};
-String []DEFAULT_LE_FILE       = {"Facemodel/eye1_indices_decimated.bin",                  "Facemodel/sym_left_eye_poly.bin", "Facemodel/left_eye_indexes_mediapipe.bin"};
-String []DEFAULT_RE_FILE       = {"Facemodel/eye2_indices_decimated.bin",                  "Facemodel/sym_right_eye_poly.bin", "Facemodel/right_eye_indexes_mediapipe.bin"};
-String []DEFAULT_MOUTH_FILE    = {"Facemodel/mouth_indices_decimated.bin",                 "Facemodel/sym_mouth_poly.bin", "Facemodel/mouth_indexes_mediapipe.bin"};
+String []DEFAULT_TEXCOORD_FILE = {"Facemodel/default_mapping.bin", "Facemodel/sym_tex_coords_compatible.bin", "Facemodel/tex_coords_mediapipe.bin", "Facemodel/tex_coords_arkit.bin"};
+String []DEFAULT_INDEXES_FILE  = {"Facemodel/GENERATED_decimated_patched_hole_indices.bin","Facemodel/fm_render_ind.bin", "Facemodel/indexes_mediapipe.bin", "Facemodel/indexes_arkit.bin"};
+String []DEFAULT_LE_FILE       = {"Facemodel/eye1_indices_decimated.bin",                  "Facemodel/sym_left_eye_poly.bin", "Facemodel/left_eye_indexes_mediapipe.bin", "Facemodel/left_eye_indexes_arkit.bin"};
+String []DEFAULT_RE_FILE       = {"Facemodel/eye2_indices_decimated.bin",                  "Facemodel/sym_right_eye_poly.bin", "Facemodel/right_eye_indexes_mediapipe.bin", "Facemodel/right_eye_indexes_arkit.bin"};
+String []DEFAULT_MOUTH_FILE    = {"Facemodel/mouth_indices_decimated.bin",                 "Facemodel/sym_mouth_poly.bin", "Facemodel/mouth_indexes_mediapipe.bin", "Facemodel/mouth_indexes_arkit.bin"};
+
+String MEDIAPIPE_MESH = "mediapipe_mesh";
+String ARKIT_MESH     = "arkit_mesh";
 
 class facemodel : BaseEffectImpl
 {
@@ -44,7 +47,15 @@ class facemodel : BaseEffectImpl
             defaultRP.Append(cache.GetResource("XMLFile", "RenderPaths/clear_depth.xml"));
         }
 
-        int facemodel_version = GetGlobalVar(FACEMODEL_VERSION).GetInt(); 
+        int facemodel_version = GetGlobalVar(FACEMODEL_VERSION).GetInt();
+        int filesIndex        = facemodel_version;
+
+        if (!globalVars["FACEMODEL_MESH"].empty && facemodel_version >= 2) {
+            if (facemodel_version == 2) {
+                filesIndex = globalVars["FACEMODEL_MESH"] == MEDIAPIPE_MESH ? 2 : 3;
+            }
+        }
+
 //        Print("facemodel_version=" + facemodel_version );
         
         _eyes = effect_desc.Get("eyes").GetBool();
@@ -55,12 +66,12 @@ class facemodel : BaseEffectImpl
         }
         else
         {
-            _texcoords = DEFAULT_TEXCOORD_FILE[facemodel_version];
+            _texcoords = DEFAULT_TEXCOORD_FILE[filesIndex];
         }
-        _indexes = DEFAULT_INDEXES_FILE[facemodel_version];
-        _indexes_mouth = DEFAULT_MOUTH_FILE[facemodel_version];
-        _indexes_LE = DEFAULT_LE_FILE[facemodel_version];
-        _indexes_RE = DEFAULT_RE_FILE[facemodel_version];
+        _indexes = DEFAULT_INDEXES_FILE[filesIndex];
+        _indexes_mouth = DEFAULT_MOUTH_FILE[filesIndex];
+        _indexes_LE = DEFAULT_LE_FILE[filesIndex];
+        _indexes_RE = DEFAULT_RE_FILE[filesIndex];
 
         // check file exist
         Array<String> files = { _texcoords , _indexes , _indexes_mouth , _indexes_LE, _indexes_RE };

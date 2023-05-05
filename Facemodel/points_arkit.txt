@@ -1,0 +1,46 @@
+RightEyeOuterCorner 1101
+RightEyeInnerCorner 1089
+LeftEyeInnerCorner 1081
+LeftEyeOuterCorner 1069
+PointBetweenEyes 15
+ForeheadCenter 1041
+NoseTip 8
+RightLipCorner 393
+LeftLipCorner 823
+Chin 1049
+LeftCheek 876
+RightCheek 448
+UpperLipLeft 691
+UpperLipRight 256
+LowerLipLeft 700
+LowerLipRight 265
+Forehead_1 20
+Forehead_2 17
+
+LeftEye0 98
+LeftEye1 101
+LeftEye2 120
+LeftEye3 121
+LeftEye4 123
+LeftEye5 124
+
+RightEye0 99
+RightEye1 100
+RightEye2 118
+RightEye3 119
+RightEye4 122
+RightEye5 125
+
+LeftBrow0 97
+LeftBrow1 127
+LeftBrow2 129
+LeftBrow3 130
+LeftBrow4 134
+
+RightBrow0 126
+RightBrow1 128
+RightBrow2 131
+RightBrow3 132
+RightBrow4 133
+
+NoseBridge 13
