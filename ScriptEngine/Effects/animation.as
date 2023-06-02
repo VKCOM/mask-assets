@@ -220,7 +220,7 @@ class animation : BaseEffectImpl
             float fps = ani_desc.Get("fps").GetFloat();
 
             if (fps < M_EPSILON)
-                fps = 25.f;
+                fps = 30.0f;
 
             double time_step = 1.0 / double(fps);
 

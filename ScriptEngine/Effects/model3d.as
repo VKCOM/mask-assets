@@ -21,8 +21,8 @@ class model_texture_animation
     String texture_resource;
 
     // From artist's settings in 'mask.json'
-    String trigger_start;
-    String trigger_stop;
+    String trigger_start = "";
+    String trigger_stop = "";
     float fps = 30.0;
 
     // Runtime variables
@@ -65,7 +65,9 @@ class model_texture_animation
             return;
         }
 
-        // Sunscriptions
+        if (texture_desc.Contains("animation") && trigger_start == "")
+            start();
+
         if (trigger_start == "tap" || trigger_stop == "tap")
             SubscribeToEvent("MouseEvent", "HandleTapEvent");
 
@@ -127,9 +129,10 @@ class model_texture_animation
                     trigger_stop = animation_parameters.Get("trigger_stop").GetString();
                 
                 if (animation_parameters.Contains("fps"))
+                {
                     fps = animation_parameters.Get("fps").GetFloat();
-
-                if (animation_parameters.Contains("timeline"))
+                }
+                else if (animation_parameters.Contains("timeline"))
                 {
                     JSONValue timeline = animation_parameters.Get("timeline");
                     if (timeline.isArray && timeline.size > 0)
@@ -170,8 +173,7 @@ class model_texture_animation
                     }
                     hasTimeline = true;
                 }
-
-                if (animation_parameters.Contains("timeline_ex"))
+                else if (animation_parameters.Contains("timeline_ex"))
                 {
                     JSONValue timeline_ex = animation_parameters.Get("timeline_ex");
                     if (timeline_ex.isArray && timeline_ex.size > 0)
@@ -279,8 +281,6 @@ class model_texture_animation
                 stop(trigger_start == "tap");
                 return;
             }
-
-            log.Info("frame: " + frame);
 
             String texture_path = texturePaths[frame];
             Texture@ texture = cache.GetResource(texture_resource, texture_path);
