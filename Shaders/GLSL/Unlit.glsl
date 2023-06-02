@@ -12,6 +12,10 @@ varying HIGHP_AUTO vec4 vWorldPos;
     varying vec4 vColor;
 #endif
 
+#if defined(PERSON_SEGMENTATION)
+   varying HIGHP_AUTO vec2 vScreenPos;
+#endif
+
 void VS()
 {
     mat4 modelMatrix = iModelMatrix;
@@ -19,6 +23,9 @@ void VS()
     gl_Position = GetClipPos(worldPos);
     vTexCoord = GetTexCoord(iTexCoord);
     vWorldPos = vec4(worldPos, GetDepth(gl_Position));
+#if defined(PERSON_SEGMENTATION)
+    vScreenPos = GetScreenPosPreDiv(gl_Position);
+#endif
 
     #ifdef VERTEXCOLOR
         vColor = iColor;
@@ -62,6 +69,11 @@ void PS()
         gl_FragData[1] = vec4(0.0, 0.0, 0.0, 0.0);
         gl_FragData[2] = vec4(0.5, 0.5, 0.5, 1.0);
         gl_FragData[3] = vec4(EncodeDepth(vWorldPos.w), 0.0);
+    #elif defined(PERSON_SEGMENTATION)
+        vec4 textureColor      = texture2D(sEnvMap, vScreenPos);
+        vec4 segmentationColor = texture2D(sSegmMap, vScreenPos);
+        vec4 backColor = vec4(GetFog(diffColor.rgb, fogFactor), diffColor.a);
+        gl_FragColor = vec4(mix(backColor.rgb, textureColor.rgb, segmentationColor.a), textureColor.a);
     #else
         gl_FragColor = vec4(GetFog(diffColor.rgb, fogFactor), diffColor.a);
     #endif
