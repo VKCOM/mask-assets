@@ -502,11 +502,9 @@ class model3d : BaseEffectImpl
                 check Unload      
         */
         
-        // XMLFile@ sky = cache.GetResource("XMLFile", "Textures/Sky.xml");
-        // Print(sky.ToString());
+
 
         // Parse single or multiple materials
-        Material@ mat;
         if (effect_desc.Get("material").isArray)
         {
             for (uint i = 0; i < effect_desc.Get("material").size; i++)
@@ -603,14 +601,27 @@ class model3d : BaseEffectImpl
 
                 String key = keys[i];
                 JSONValue value = parameters.Get(key);
-
-                // Make string from array ("aka Vector4" - rgba)
                 String valueString = "";
-                for (uint j = 0; j < value.size; j++)
-                    valueString += value[j].GetFloat() + " ";
+
+                if (value.isArray) 
+                {
+                    // Make string from array ("aka Vector4" - rgba)
+                    for (uint j = 0; j < value.size; j++)
+                        valueString += value[j].GetFloat() + " ";
+
+                } 
+                else if (value.isNumber)
+                {
+                    valueString += value.GetFloat() + "";
+
+                } else 
+                {
+                    log.Warning("model3d : material parameter \"" + key + "\" unsupported type.");
+                }
 
                 // Replace `Vector4` with string
                 parameters.Set(key, JSONValue(valueString));
+                
             }
 
             material_desc.Set("shaderParameters", parameters);
@@ -633,21 +644,29 @@ class model3d : BaseEffectImpl
                 JSONValue value = textures.Get(key);
                 String valueString;
 
-                // Animation is NOT specified for this texture
-                if (value.isString)
-                    valueString = value.GetString();
 
+                // Animation is NOT specified for this texture
+                if (value.isString) {
+                    valueString = value.GetString();
+                }
                 // Animation IS specified for this texture
-                if (value.isObject)
+                else if (value.isObject)
                 {
                     if (value.Contains("texture"))
                     {
                         valueString = value.Get("texture").GetString();
+    
                         textureAnimations.Push(
                             model_texture_animation(material, key, value)
                         );
                     }
                 }
+
+                // will not support animation_textures for now ...
+                if (key == "environment") 
+                {
+                    valueString = PreprocessEnvTexture(valueString);
+                } 
 
                 textures.Set(key, JSONValue(valueString));
             }
@@ -667,6 +686,38 @@ class model3d : BaseEffectImpl
         } 
 
         return material;
+    }
+
+    /* Will do something good)))
+    */
+    String PreprocessEnvTexture(String envTexture) {
+
+        //  if xml file exist then use it 
+        //  else will create 
+        // if need to disable use xml with Texture2D type
+        String extension = GetExtension(envTexture, false);
+        if (extension == ".xml" || !cache.Exists(envTexture) ) return envTexture;
+
+        String path = GetPath(envTexture);
+        String xmlFileFullPath = ReplaceExtension(envTexture, ".xml"); // ??? will do cross platform ???
+        String xmlFileName = GetFileName(xmlFileFullPath);
+
+        // does support vertical layout?
+        String envTextureXMLString = 
+        "<cubemap>" +
+            "<image name=\"" + xmlFileName + extension + "\" layout=\"horizontal\" />" +
+        "</cubemap>";
+
+        XMLFile envXMLFile;
+        envXMLFile.FromString(envTextureXMLString);
+        
+        File@ file = File(xmlFileFullPath, FILE_WRITE);
+
+        envXMLFile.Save(file);
+        log.Error(file.name);
+        file.Close(); // NOTE! always close files
+
+        return xmlFileFullPath;
     }
 
     /* Parses `animation` of a model description, creates `AnimationModel`
@@ -708,10 +759,6 @@ class model3d : BaseEffectImpl
         String triggerStart = ani_desc.Get("trigger_start").GetString();
         String triggerStop = ani_desc.Get("trigger_stop").GetString();
 
-        // hehe is a num of frames
-        // AnimationState@ animState = animatedModel.GetAnimationState(0);
-        // Animation@ anim = animState.animation;
-        // Print(anim.memoryUse);
 
         SubscribeToEvent(START_ANIMATION_EVENT, "HandleStartAnimation");
         SubscribeToEvent(STOP_ANIMATION_EVENT, "HandleStopAnimation");
