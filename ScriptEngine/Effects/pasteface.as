@@ -12,6 +12,7 @@ class pasteface : BaseEffectImpl
     Array<String> rotations;
 
     String anchorPlace;
+    String tagz;
     String textureFile;
     float maxsize;
 
@@ -38,7 +39,17 @@ class pasteface : BaseEffectImpl
         
                 log.Info("→pasteface: source element loaded");
         } else {
-                log.Error("→pasteface: source element not specified");
+                log.Info("→pasteface: source element not specified");
+        }
+
+    //________________получение дочерних свойств json-файла _____________//
+    if(effect_desc.Contains("tag")) 
+        {
+                tagz = effect_desc.Get("tag").GetString();
+        
+                log.Info("→pasteface: patch has tags");
+        } else {
+                log.Info("→pasteface: source element not specified");
         }
 
     //________________получение дочерних свойств json-файла _____________//
@@ -99,12 +110,12 @@ class pasteface : BaseEffectImpl
 
                         } else
                         {
-                            log.Error("→pasteface: size specified in wrong way");
+                            log.Info("→pasteface: size specified in wrong way");
                         }
 
                     } else
                     {
-                        log.Error("→pasteface: size specified in wrong way, must be an array");
+                        log.Info("→pasteface: size specified in wrong way, must be an array");
                     }
     } else {                   
                             if (textureFile == "mouth" || textureFile =="nose") {
@@ -146,12 +157,12 @@ class pasteface : BaseEffectImpl
                             
                         } else
                         {
-                            log.Error("→pasteface: rotations are specified in wrong way");
+                            log.Info("→pasteface: rotations are specified in wrong way");
                         }
 
                     } else
                     {
-                        log.Error("→pasteface: rotations are specified in wrong way, must be an array");
+                        log.Info("→pasteface: rotations are specified in wrong way, must be an array");
                     }
         } else
         {
@@ -164,9 +175,9 @@ class pasteface : BaseEffectImpl
     //________________________________patchCopyMaker______________________________//
         textureFile += "_copy"; 
 
-        String patchCopyMakerText = "{\"name\": \"patch\",\"anchor\":\""+anchorPlace+"\",\"texture\": { \"texture\":\""+textureFile+"\"},\"size\":["+sizes[0]+","+sizes[1]+"],\"offset\":["+offsets[0]+","+offsets[1]+","+offsets[2]+"],\"rotation\": ["+rotations[0]+","+rotations[1]+","+rotations[2]+"]}";
+        String patchCopyMakerText = "{\"name\": \"patch\",\"anchor\":\""+anchorPlace+"\",\"tag\":\""+tagz+"\",\"texture\": { \"texture\":\""+textureFile+"\"},\"size\":["+sizes[0]+","+sizes[1]+"],\"offset\":["+offsets[0]+","+offsets[1]+","+offsets[2]+"],\"rotation\": ["+rotations[0]+","+rotations[1]+","+rotations[2]+"]}";
         if (textureFile == "mouth_copy") {
-        patchCopyMakerText = "{\"name\": \"patch\",\"tag\": \"maxsizer\",\"anchor\":\""+anchorPlace+"\",\"texture\": { \"texture\":\""+textureFile+"\"},\"size\":["+sizes[0]+","+sizes[1]+"],\"offset\":["+offsets[0]+","+offsets[1]+","+offsets[2]+"],\"rotation\": ["+rotations[0]+","+rotations[1]+","+rotations[2]+"]}";
+        patchCopyMakerText = "{\"name\": \"patch\",\"tag\": \"maxsizer\",\"anchor\":\""+anchorPlace+"\",\"tag\":\""+tagz+"\",\"texture\": { \"texture\":\""+textureFile+"\"},\"size\":["+sizes[0]+","+sizes[1]+"],\"offset\":["+offsets[0]+","+offsets[1]+","+offsets[2]+"],\"rotation\": ["+rotations[0]+","+rotations[1]+","+rotations[2]+"]}";
         }
         @patchCopyMaker = AddChildEffect("patch");
         if (patchCopyMaker !is null)
@@ -176,7 +187,7 @@ class pasteface : BaseEffectImpl
 
             if (!patchCopyMaker.Init(jsonFile.GetRoot(), parent))
             {
-                log.Error("→pasteface: cannot init patchCopyMaker");
+                log.Info("→pasteface: cannot init patchCopyMaker");
                 return false;
             }
         }
