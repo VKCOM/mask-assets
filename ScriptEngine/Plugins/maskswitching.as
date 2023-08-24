@@ -1,4 +1,5 @@
 #include "ScriptEngine/Plugins/BasePlugin.as"
+#include "ScriptEngine/Utils.as"
 
 
 class maskswitching : BasePlugin
@@ -38,8 +39,9 @@ class maskswitching : BasePlugin
             current_mask = maskTags.length == 0 ? 0 : RandomInt(0, 98) % maskTags.length;
 
         if (trigger == "mouth") SubscribeToEvent("MouthTrigger", "HandleMouthTrigger");
-        if (trigger == "tap") SubscribeToEvent("MouseEvent", "HandleTapEvent");
-        if (trigger == "directional_tap") SubscribeToEvent("MouseEvent", "HandleDirectionalTapEvent");
+        else if (trigger == "tap") SubscribeToEvent("MouseEvent", "HandleTapEvent");
+        else if (trigger == "directional_tap") SubscribeToEvent("MouseEvent", "HandleDirectionalTapEvent");
+        else if (MaskEngine::HAND_GESTURE_NAMES.Find(trigger) != -1) SubscribeToEvent("GestureEvent", "HandleGestureEvent");
 
         SubscribeToEvent("PostUpdate", "HandlePostUpdate");
         SubscribeToEvent("UpdateFaceDetected", "HandleUpdateFaceDetected");
@@ -171,6 +173,12 @@ class maskswitching : BasePlugin
         */
 
         if (eventData["Opened"].GetBool())
+            switchMask(1);
+    }
+
+    void HandleGestureEvent(StringHash eventType, VariantMap& eventData)
+    {   
+        if (trigger == eventData["Gesture"].GetString())
             switchMask(1);
     }
 
