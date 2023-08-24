@@ -79,6 +79,25 @@ BaseEffect@ CreateEffect(String name, bool& wasSkip)
     return cast<BaseEffect>(obj);
 }
 
+/*
+    For future update where all user event effects will be
+    placed into a separate directory.
+
+String ResolveModulePath(const String& effectName)
+{
+    String parentPath = "ScriptEngine/Effects/";
+    if (
+        effectName.StartsWith("gesture_", false) ||
+        effectName.StartsWith("mouth_", false) ||
+        effectName.StartsWith("face_", false) ||
+        effectName == "tap" || 
+        effectName == "nod"
+    )
+        parentPath += "user_events/";
+    return parentPath + effectName + ".as";
+}
+*/
+
 
 // note: this should correspond to face_recognizer's setup
 uint MAX_FACES = 2;

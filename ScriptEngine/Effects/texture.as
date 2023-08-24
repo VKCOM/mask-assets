@@ -228,7 +228,7 @@ class texture : BaseEffectImpl
 
         {
             {
-                Vector4     color = one_vector;
+                Vector4     color = ONES_VECTOR;
                 if (ReadVector4(texture_desc.Get("color"), color, true))
                     mat.shaderParameters["MatDiffColor"] = Variant(color);
             }
@@ -236,7 +236,7 @@ class texture : BaseEffectImpl
             Array<String> colors = { "MatDiffColor", "FogColor", "LightColor", "MatEmissiveColor", "MatEnvMapColor", "MatSpecColor" };
             for (uint i = 0; i < colors.length; i++)
             {
-                Vector4     color = one_vector;
+                Vector4     color = ONES_VECTOR;
                 if (ReadVector4(texture_desc.Get(colors[i]), color, true))
                     mat.shaderParameters[colors[i]] = Variant(color);
             }
