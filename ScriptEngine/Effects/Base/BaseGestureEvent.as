@@ -24,7 +24,7 @@ class BaseGestureEvent : BaseEvent
         VariantMap gestureMap = eventData["GestureFigures"]
             .GetVariantVector()[0]
             .GetVariantMap();
-        String gesture = gestureMap["Gesture"].GetsString().ToUpper();
+        String gesture = gestureMap["Gesture"].GetString().ToUpper();
         
         if (gesture == "OTHER" || gesture == "UNDEFINED_GESTURE")
             return;
