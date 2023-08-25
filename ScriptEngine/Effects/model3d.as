@@ -269,7 +269,7 @@ class model_texture_animation
             start();
 
         if (running && trigger_stop == gesture)
-            stop();
+            stop(trigger_start != "face_found");
     }
 
     private void HandleUpdate(StringHash eventType, VariantMap& eventData)
