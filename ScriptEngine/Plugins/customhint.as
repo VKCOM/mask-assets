@@ -126,7 +126,10 @@ class customhint : BasePlugin
 
     void HandleGestureEvent(StringHash eventType, VariantMap& eventData)
     {   
-        if (trigger == eventData["Gesture"].GetString())
+        VariantMap gestureMap = eventData["GestureFigures"]
+            .GetVariantVector()[0]
+            .GetVariantMap();
+        if (trigger == gestureMap["Gesture"].GetString())
             tap = true;
     }
 }

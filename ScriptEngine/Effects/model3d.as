@@ -76,7 +76,7 @@ class model_texture_animation
             SubscribeToEvent("UpdateFaceDetected", "HandleFaceDetected");
 
         if (HAND_GESTURE_NAMES.Find(trigger_start) != -1 || HAND_GESTURE_NAMES.Find(trigger_stop) != -1)
-            SubscribeToEvent("GestureEvent", "HandleEventName");
+            SubscribeToEvent("GestureEvent", "HandleGestureEvent");
 
         SubscribeToEvent("Update", "HandleUpdate");
     }
@@ -263,13 +263,16 @@ class model_texture_animation
 
     private void HandleGestureEvent(StringHash eventType, VariantMap& eventData)
     {
-        const String gesture = eventData["Gesture"].GetString();
+        VariantMap gestureMap = eventData["GestureFigures"]
+            .GetVariantVector()[0]
+            .GetVariantMap();
+        String gesture = gestureMap["Gesture"].GetString();
         
         if (!running && trigger_start == gesture)
             start();
 
         if (running && trigger_stop == gesture)
-            stop();
+            stop(trigger_start != "face_found");
     }
 
     private void HandleUpdate(StringHash eventType, VariantMap& eventData)
@@ -620,9 +623,9 @@ class model3d : BaseEffectImpl
 
                 if (value.isArray) 
                 {
-                // Make string from array ("aka Vector4" - rgba)
-                for (uint j = 0; j < value.size; j++)
-                    valueString += value[j].GetFloat() + " ";
+                    // Make string from array ("aka Vector4" - rgba)
+                    for (uint j = 0; j < value.size; j++)
+                        valueString += value[j].GetFloat() + " ";
 
                 } 
                 else if (value.isNumber)
@@ -983,10 +986,10 @@ class model3d : BaseEffectImpl
                 }
             } else if (!_anchor.empty && _anchor == "face") {
                 if (poiData[_faceIdx]["Detected"].GetBool() &&
-                    poiData[_faceIdx]["PoiMap"].GetVariantMap().Contains(FACE_CENTER_OFFSET))
+                poiData[_faceIdx]["PoiMap"].GetVariantMap().Contains(FACE_CENTER_OFFSET))
                 {
-                    Vector3 anchor_point = poiData[_faceIdx]["PoiMap"].GetVariantMap()[FACE_CENTER_OFFSET].GetVector3();
-                    _anchorNode.position = anchor_point;
+                	Vector3 anchor_point = poiData[_faceIdx]["PoiMap"].GetVariantMap()[FACE_CENTER_OFFSET].GetVector3();
+                	_anchorNode.position = anchor_point;
                 }
             }
         }
