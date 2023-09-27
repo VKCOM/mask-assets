@@ -26,6 +26,8 @@ class facemodel : BaseEffectImpl
     private bool _eyes = false;
     private bool _mouth = false;
     private VectorBuffer _idx_face_model;
+    private int _files_index;
+    private bool _loadTextureFromDefaultFile = true;
 
     bool Init(const JSONValue& effect_desc, BaseEffect@ parent) override
     {
@@ -47,47 +49,21 @@ class facemodel : BaseEffectImpl
             defaultRP.Append(cache.GetResource("XMLFile", "RenderPaths/clear_depth.xml"));
         }
 
-        int facemodel_version = GetGlobalVar(FACEMODEL_VERSION).GetInt();
-        int filesIndex        = facemodel_version;
+        _files_index = GetFacemodelIndex();
 
-        if (!globalVars["FACEMODEL_MESH"].empty && facemodel_version >= 2) {
-            if (facemodel_version == 2) {
-                filesIndex = globalVars["FACEMODEL_MESH"] == MEDIAPIPE_MESH ? 2 : 3;
-            }
-        }
-
-//        Print("facemodel_version=" + facemodel_version );
-        
-        _eyes = effect_desc.Get("eyes").GetBool();
-        _mouth = effect_desc.Get("mouth").GetBool();
         if (effect_desc.Get("texture_coords").isString)
         {
             _texcoords = effect_desc.Get("texture_coords").GetString();
+            _loadTextureFromDefaultFile = false;
         }
-        else
-        {
-            _texcoords = DEFAULT_TEXCOORD_FILE[filesIndex];
-        }
-        _indexes = DEFAULT_INDEXES_FILE[filesIndex];
-        _indexes_mouth = DEFAULT_MOUTH_FILE[filesIndex];
-        _indexes_LE = DEFAULT_LE_FILE[filesIndex];
-        _indexes_RE = DEFAULT_RE_FILE[filesIndex];
 
-        // check file exist
-        Array<String> files = { _texcoords , _indexes , _indexes_mouth , _indexes_LE, _indexes_RE };
-        for (uint i = 0; i < files.length; i++)
+        if (!UpdateResources(_files_index))
         {
-            String fileName = files[i];
-            if (!fileName.empty)
-            {
-                File@ file = cache.GetFile(fileName);
-                if (file is null)
-                {
-                    log.Error("Failed to load file '" + fileName + "' in facemodel");
-                    return false;
-                }
-            }
+            return false;
         }
+
+        _eyes = effect_desc.Get("eyes").GetBool();
+        _mouth = effect_desc.Get("mouth").GetBool();
 
         Node@ faceNode = scene.GetChild(_faceNodeName);
         if (faceNode is null)
@@ -141,6 +117,18 @@ class facemodel : BaseEffectImpl
         {
             _node.enabled = false;
             return;
+        }
+
+        int filesIndex = GetFacemodelIndex();
+        if (filesIndex != _files_index)
+        {
+            if (!UpdateResources(filesIndex))
+            {
+                return;
+            }
+            _files_index = filesIndex;
+            _model = null;
+            _node.RemoveAllComponents();
         }
 
         if (_model is null)
@@ -252,6 +240,46 @@ class facemodel : BaseEffectImpl
     Node@ GetNode(uint index) override
     {
         return index == 0 ? _node : null;
+    }
+
+    int GetFacemodelIndex()
+    {
+        int facemodel_version = GetGlobalVar(FACEMODEL_VERSION).GetInt();
+        int filesIndex        = facemodel_version;
+
+        if (facemodel_version == 2 && !globalVars["FACEMODEL_MESH"].empty) {
+            filesIndex = globalVars["FACEMODEL_MESH"] == ARKIT_MESH ? 3 : 2;
+        }
+        return filesIndex;
+    }
+
+    bool UpdateResources(int filesIndex)
+    {
+        if (_loadTextureFromDefaultFile)
+        {
+            _texcoords = DEFAULT_TEXCOORD_FILE[filesIndex];
+        }
+        _indexes = DEFAULT_INDEXES_FILE[filesIndex];
+        _indexes_mouth = DEFAULT_MOUTH_FILE[filesIndex];
+        _indexes_LE = DEFAULT_LE_FILE[filesIndex];
+        _indexes_RE = DEFAULT_RE_FILE[filesIndex];
+
+        // check file exist
+        Array<String> files = { _texcoords , _indexes , _indexes_mouth , _indexes_LE, _indexes_RE };
+        for (uint i = 0; i < files.length; i++)
+        {
+            String fileName = files[i];
+            if (!fileName.empty)
+            {
+                File@ file = cache.GetFile(fileName);
+                if (file is null)
+                {
+                    log.Error("Failed to load file '" + fileName + "' in facemodel");
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 }
 
