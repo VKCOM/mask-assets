@@ -36,7 +36,11 @@ class custom_asset_menu: BasePlugin
             }
 
             if (plugin_config.Contains("default_files")) {
-                defaultFiles = plugin_config.Get("default_files").GetFields();
+                JSONValue defaultFilesArray = plugin_config.Get("default_files");
+                for (uint i = 0; i < defaultFilesArray.size; i++)
+                {
+                    defaultFiles.Push(defaultFilesArray[i].GetString());
+                }
             }
 
             if (plugin_config.Contains("hide_after_select")) {
