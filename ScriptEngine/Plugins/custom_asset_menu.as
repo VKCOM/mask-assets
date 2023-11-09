@@ -55,7 +55,7 @@ class custom_asset_menu: BasePlugin
                 log.Error("custom_asset_menu: We support only image asset");
                 return;
             }
-            String filename = eventData["Filaname"].GetString();
+            String filename = eventData["Filename"].GetString();
             Texture2D@ tex = cache.GetResource("Texture2D", filename);
             if (tex is null) {
                 log.Error("custom_asset_menu: Cannot load asset '" + filename + "'");
