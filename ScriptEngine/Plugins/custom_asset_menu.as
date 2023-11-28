@@ -15,7 +15,7 @@ class custom_asset_menu: BasePlugin
         LoadSettings(plugin_config);
         SubscribeToEvent("GalleryAssetSelect", "HandleGalleryAssetSelect");
 
-        maskengine.ShowGallery(mode, defaultFiles);
+        maskengine.ShowGallery(mode, defaultFiles, 0);
 
         return true;
     }
