@@ -7,7 +7,7 @@ namespace MaskEngine
 class sub_mask : BaseEffectImpl
 {
     Array<BaseEffect@> subEffects;
-    String settingsFile    = "sub_mask.json";
+    String settingsFile    = "effects.json";
     String resource_folder = "";
     String tag = "";
 
