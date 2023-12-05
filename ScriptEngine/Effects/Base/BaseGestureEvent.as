@@ -14,17 +14,14 @@ class BaseGestureEvent : BaseEvent
         bool res = BaseEvent::Init(parent);
 
         if (@_ownerEffect !is null)
-            SubscribeToEvent("GestureEvent", "HandleGestureEvent");
+            SubscribeToEvent("UpdateHandGesture", "HandleUpdateHandGesture");
 
         return res && (_ownerEffect !is null);
     }
 
-    void HandleGestureEvent(StringHash eventType, VariantMap& eventData)
+    void HandleUpdateHandGesture(StringHash eventType, VariantMap& eventData)
     {
-        VariantMap gestureMap = eventData["GestureFigures"]
-            .GetVariantVector()[0]
-            .GetVariantMap();
-        String gesture = gestureMap["Gesture"].GetString().ToUpper();
+        String gesture = eventData["Gesture"].GetString().ToUpper();
         
         if (gesture == "OTHER" || gesture == "UNDEFINED_GESTURE")
             return;
