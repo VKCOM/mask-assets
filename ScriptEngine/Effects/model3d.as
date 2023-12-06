@@ -981,6 +981,13 @@ class model3d : BaseEffectImpl
                 {
                     _SetVisible(false);
                 }
+            } else if (!_anchor.empty && _anchor == "face") {
+                if (poiData[_faceIdx]["Detected"].GetBool() &&
+                poiData[_faceIdx]["PoiMap"].GetVariantMap().Contains(FACE_CENTER_OFFSET))
+                {
+                	Vector3 anchor_point = poiData[_faceIdx]["PoiMap"].GetVariantMap()[FACE_CENTER_OFFSET].GetVector3();
+                	_anchorNode.position = anchor_point;
+                }
             }
         }
     }
@@ -1018,5 +1025,4 @@ class model3d : BaseEffectImpl
         return baseAnimation;
     }
 }
-
 }

@@ -11,5 +11,6 @@
     
     <command type="scenepass" pass="viewportblend" output="viewport">
         <texture unit="environment" name="viewport" />
-    </command>    
+        <texture unit="segmentation" name="person_segmentation" />
+    </command>
 </renderpath>

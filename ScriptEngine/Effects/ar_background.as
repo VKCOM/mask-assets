@@ -16,6 +16,8 @@ class ar_background : BaseAr
     Node@ arCameraNode;
     Node@ arCameraTransfromNode;
 
+    bool gotSensorData = false;
+
     void Init() override
     {
         //Print("ArPlugin init");
@@ -95,7 +97,7 @@ class ar_background : BaseAr
 
         SubscribeToEvent("SrcFrameUpdate", "HandleUpdateSrc");
         SubscribeToEvent("PostUpdate", "HandlePostUpdate");
-        SubscribeToEvent("ArUpdate", "HandleArUpdate");
+        SubscribeToEvent("ArSensorsUpdate", "HandleArUpdate");
     }
 
     String GetName() override
@@ -107,6 +109,7 @@ class ar_background : BaseAr
     {
         //Print("HandleArUpdate");
 
+        gotSensorData = true;
         Vector3 gravity = eventData["gravity"].GetVector3();
         rotation = eventData["rotation"].GetQuaternion();
         ApplyArCamera();
@@ -121,15 +124,18 @@ class ar_background : BaseAr
         camera.orthographic = false;
 
         Quaternion currentRotation = rotation;
-        arCameraNode.rotation = Quaternion(0, 0, 90);
-        //camera.useReflection = camera.useReflection;
+        arCameraNode.rotation = isFront ? Quaternion(0, 0, 0) : Quaternion(180, 0, 180);
+        if (!isFront) {
+            Vector3 eulerAngles = currentRotation.eulerAngles;
+            currentRotation.FromEulerAngles(eulerAngles.x, -eulerAngles.y, -eulerAngles.z);
+        }
 
         if (!savedStart)
         {
             //scene.GetChild("ar_background").rotation = currentRotation * Quaternion(0, 0, ((frameRotation == 0) ? 90 : frameRotation == 180 ? -90 : 180));
             if (frameRotation == 0 || frameRotation == 180)
             {
-                scene.GetChild("ar_background").rotation = Quaternion(0, 0, -90);
+            //    scene.GetChild("ar_background").rotation = Quaternion(0, 0, -90);
             }
 
             savedStart = true;
@@ -154,11 +160,11 @@ class ar_background : BaseAr
                         billboard.rotation = 90;
 
                         Vector3 toCenter = (allBackgroundNodes[i].LocalToWorld(billboard.position)).Normalized();
-                        Vector3 axe = (Vector3(0.0, 0.0, 1.0));
+                        Vector3 axe = (Vector3(0.0, 1.0, 0.0));
                         billboard.direction = axe.CrossProduct(toCenter);
                         if (billboard.direction.length < 1e-3)
                         {
-                            Vector3 axe2 = (Vector3(0.0, 1.0, 0.0));
+                            Vector3 axe2 = (Vector3(0.0, 0.0, 1.0));
                             billboard.direction = axe2.CrossProduct(toCenter);
                         }
                     }
@@ -184,21 +190,22 @@ class ar_background : BaseAr
         frameRotation = eventData["Angle"].GetFloat();
         isFront = eventData["IsFrontCamera"].GetBool();
 
-        if (isFront)
-        {
+        if (!isShowOnFront || !isShowOnBack) {
+          bool subscribe = (isFront && isShowOnFront) || (isShowOnBack && !isFront);
+          if (!subscribe)
+          {
             UnsubscribeFromEvent("ArUpdate");
-        }
-        else
-        {
+          }
+          else
+          {
             SubscribeToEvent("ArUpdate", "HandleArUpdate");
+          }
         }
-
     }
 
     void HandlePostUpdate(StringHash eventType, VariantMap& eventData)
     {
-        scene.GetChild("ar_background").SetEnabledRecursive(!isFront);
-        //Print(isFront);
+        scene.GetChild("ar_background").SetEnabledRecursive(((isFront && isShowOnFront) || (isShowOnBack && !isFront)) && gotSensorData);
     }
 }
 
