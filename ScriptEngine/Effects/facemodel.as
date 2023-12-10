@@ -234,6 +234,13 @@ class facemodel : BaseEffectImpl
     {
         return index == 0 ? _node : null;
     }
+
+    BaseAnimation@ GetAnimation() override
+    {
+        if (_texture !is null)
+            return _texture.GetAnimation();
+        return null;
+    }
 }
 
 }
