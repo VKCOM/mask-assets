@@ -140,14 +140,14 @@ class patch : BaseEffectImpl
         }
         else if (screenAnchor !is null)
         {
-            _node.position = Vector3(0, 0, 10);
+            _node.position = Vector3(_offset[0].pix, _offset[1].pix, _offset[2].pix);
             _bbSet.fixedScreenSize = false;
             _bbSet.faceCameraMode = FC_NONE;
             _fitMode = effect_desc.Get("fit").GetString();
 
             Billboard@ bb = _bbSet.billboards[0];
 
-            bb.position = Vector3(_offset[0].pix, _offset[1].pix, _offset[2].pix);
+            bb.position = Vector3(0.0,0.0,0.0);
             bb.size = Vector2(_size[0].pix, _size[1].pix);
             bb.enabled = true;
 
@@ -380,7 +380,9 @@ class patch : BaseEffectImpl
             if (screenAnchor !is null)
             {
                 Billboard@ bb = _bbSet.billboards[0];
-                bb.position = Vector3(sourceFrame * screenAnchor.position, 0.0f) + GetPositionValue3D(_offset, sourceFrame);
+         
+                _node.position = Vector3(sourceFrame * screenAnchor.position, 0.0f) + GetPositionValue3D(_offset, sourceFrame);
+               
                 bb.size = GetPositionValue2D(_size, sourceFrame / 2.0);
             }
 

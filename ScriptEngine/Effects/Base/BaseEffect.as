@@ -54,7 +54,8 @@ String CURRENT_RP_IDX    = "current_rp_idx";        // int
 String PREVIOUS_RP_IDX   = "prev_rp_idx";           // int (used to set "same" render path idx
 String MAIN_PASS_ADDED   = "main_rp_added";         // bool
 String FACEMODEL_VERSION = "facemodel_version";
-
+String FACEMODEL_MESH    = "facemodel_mesh";
+String FACE_CENTER_OFFSET = "FaceCenterOffset";
 
 // Create effect by name
 BaseEffect@ CreateEffect(String name, bool& wasSkip)

@@ -1,5 +1,6 @@
 #include "ScriptEngine/Utils.as"
 #include "ScriptEngine/Effects/Base/BaseEffect.as"
+#include "ScriptEngine/Constants.as"
 
 namespace MaskEngine
 {
@@ -12,6 +13,7 @@ class texture : BaseEffectImpl
     private Vector4 _v_transform;
     private String  _diff_texture;
     private BaseEffect@ _animationEffect;
+    private bool _gallery_asset = false;
 
     bool Init(const JSONValue& texture_desc, BaseEffect@ parent) override
     {
@@ -98,6 +100,16 @@ class texture : BaseEffectImpl
             @mat = file_mat.Clone();
         }
 
+        // Use special technique for facemodel to fix artifacts on rotation.
+        bool disableFacemodelTechnique = false;
+        if (texture_desc.Get("DisableFacemodelTechnique").isBool)
+            disableFacemodelTechnique = texture_desc.Get("DisableFacemodelTechnique").GetBool();
+        // Disable facemodel technique for old recognition.
+        if (GetGlobalVar("facemodel_version").GetInt() < 2) {
+            disableFacemodelTechnique = true;
+        }
+        String facemodelPrefix = _ownerEffect.GetName() == "facemodel" && !disableFacemodelTechnique ? "Facemodel" : "";
+
         // apply blend mode
         if (!blend_mode.empty)
         {
@@ -124,7 +136,7 @@ class texture : BaseEffectImpl
             else
             {
                 // complex blend
-                tech_name = "Techniques/TextureEffect.xml";
+                tech_name = "Techniques/TextureEffect" + facemodelPrefix + ".xml";
                 shader_name = shader_name.empty ? "ComplexBlend" : shader_name;
                 shader_defs_ps += " BLEND_FN=BF_" + blend_mode;
                 if (texture_desc.Get("UseAlphaMask").GetBool())
@@ -140,7 +152,7 @@ class texture : BaseEffectImpl
 
         if (!shader_name.empty)
         {
-            tech_name = "Techniques/TextureEffect.xml";
+            tech_name = "Techniques/TextureEffect" + facemodelPrefix + ".xml";
         }
 
         // check for tech name override
@@ -290,6 +302,13 @@ class texture : BaseEffectImpl
             }
         }
 
+        if (texture_desc.Get("gallery_asset").isBool ) {
+            _gallery_asset = texture_desc.Get("gallery_asset").GetBool();
+        }
+        if (_gallery_asset) {
+            SubscribeToEvent(MaskEngine::GALLERY_ASSET_UPDATE_EVENT, "HandleAssetUpdate");
+        }
+
         Array<String> reservedField = { "animation" };
         _inited = LoadAddons(texture_desc, reservedField);
 
@@ -355,6 +374,10 @@ class texture : BaseEffectImpl
     void HandleUpdate(StringHash eventType, VariantMap& eventData)
     {
         ApplyChildren();
+    }
+
+    void HandleAssetUpdate(StringHash eventType, VariantMap& eventData) {
+        _material.textures[TextureUnit(TU_DIFFUSE)] = cache.GetResource("Texture2D", eventData["Name"].GetString());
     }
 
     void Unload() override
