@@ -8,11 +8,25 @@ namespace MaskEngine
 
 class BaseAr : BaseEffectImpl
 {
+    bool isShowOnFront = true;
+    bool isShowOnBack  = true;
+
     bool Init(const JSONValue& effect_desc, BaseEffect@ parent)
     {
         if (!BaseEffectImpl::Init(effect_desc, parent))
         {
             return false;
+        }
+
+        if (effect_desc.Get("camera").isString) {
+            String camerasType = effect_desc.Get("camera").GetString();
+            if (camerasType == "front") {
+                isShowOnFront = true;
+                isShowOnBack  = false;
+            } else if (camerasType == "back") {
+                isShowOnFront = false;
+                isShowOnBack  = true;
+            }
         }
 
         Node@ nodeAr3D = scene.GetChild("ar_3d");

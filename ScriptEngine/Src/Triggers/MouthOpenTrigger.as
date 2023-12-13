@@ -56,8 +56,15 @@ class MouthOpenTrigger
                 float normValue = Abs(nose.y - upperLip.y);
                 float disnatceLips = Abs(upperLip.y - lowerLip.y);
 
-                bool isOpen = (disnatceLips > normValue / 2.5f) && eventData["rawConfidence"].GetFloat() > 0.75 &&
-                    Abs(eventData["PoseRotation"].GetVector3().x) < 0.35;
+                bool isOpen = false;
+
+                if (GetGlobalVar("facemodel_version").GetInt() >= 2 ) {
+                    // New face model 100% sure about found face
+                    isOpen = (disnatceLips > normValue / 2.5f) && Abs(eventData["PoseRotation"].GetVector3().x) < 0.35;
+                } else {
+                    isOpen = (disnatceLips > normValue / 2.5f) && eventData["rawConfidence"].GetFloat() > 0.75 &&
+                        Abs(eventData["PoseRotation"].GetVector3().x) < 0.35;
+                }
 
                 if (mouthOpen[faceIndex] != isOpen)
                 {

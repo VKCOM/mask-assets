@@ -1,9 +1,12 @@
 <renderpath>
+    <command type="quad" vs="CopyFramebuffer" ps="CopyFramebuffer" output="RenderPathTempTexture">
+        <texture unit="diffuse" name="viewport" />
+    </command>
     <command type="scenepass" pass="cull" />
     <command type="scenepass" pass="base" vertexlights="true" />
     <command type="scenepass" pass="alpha" vertexlights="true" sort="backtofront" />
     <command type="scenepass" pass="viewportblend" output="viewport">
-        <texture unit="environment" name="viewport" />
+        <texture unit="environment" name="RenderPathTempTexture" />
         <texture unit="segmentation" name="person_segmentation" />
     </command>
 </renderpath>
