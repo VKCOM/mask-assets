@@ -60,50 +60,6 @@ namespace MaskEngine
         }
     }
 
-    /**
-     * Load sub mask effects and add them into mask scene
-     */
-    Array<BaseEffect@> LoadSubMaskEffects(const JSONValue& effects)
-    {
-        return LoadEffectsFromList(effects, mask);
-    }
-
-    Array<BaseEffect@> LoadEffectsFromList(const JSONValue& effects, Mask @mask)
-    {
-        Array<BaseEffect@> res;
-        for (uint i = 0; i < effects.size; i++)
-        {
-            JSONValue effect = effects[i];
-            String name = effect.Get("name").GetString();
-
-            // Todo security paches
-            if (!effect.Get("disabled").GetBool())
-            {
-                bool wasSkip = false;
-
-                BaseEffect @baseEffect = CreateEffect(name, wasSkip);
-                if (baseEffect !is null)
-                {
-                    baseEffect.Init(effect, null);
-                    mask.AddEffect(baseEffect);
-                    res.Push(baseEffect);
-                }
-                // If it should not be skipped and couldn't be loaded
-                else if (!wasSkip)
-                {
-                    log.Error("Loader: Cannot create " + name);
-                    return Array<BaseEffect@>();
-                }
-            }
-            else
-            {
-                log.Info("Loader: Skip effect " + name);
-            }
-        }
-
-        return res;
-    }
-
     class Loader
     {
         // Path to user 'mask.json'
@@ -165,8 +121,38 @@ namespace MaskEngine
             // If effects is not an array, 'mask.json' is invalid
             if (effects.isArray)
             {
+                Scene @scene = script.defaultScene; // What for?
+
                 maskScene.StartLoadMask();
-                LoadEffectsFromList(effects, mask);
+
+                for (uint i = 0; i < effects.size; i++)
+                {
+                    JSONValue effect = effects[i];
+                    String name = effect.Get("name").GetString();
+
+                    // Todo security paches
+                    if (!effect.Get("disabled").GetBool())
+                    {
+                        bool wasSkip = false;
+
+                        BaseEffect @baseEffect = CreateEffect(name, wasSkip);
+                        if (baseEffect !is null)
+                        {
+                            baseEffect.Init(effect, null);
+                            mask.AddEffect(baseEffect);
+                        }
+                        // If it should not be skipped and couldn't be loaded
+                        else if (!wasSkip)
+                        {
+                            log.Error("Loader: Cannot create " + name);
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        log.Info("Loader: Skip effect " + name);
+                    }
+                }
             }
         }
 

@@ -7,7 +7,7 @@ namespace MaskEngine
 
 class BaseMouthEvent : BaseEvent
 {
-    // private Material@ _material;  // What for???
+    private Material@ _material;  // What for???
 
     // Init from code
     bool Init(BaseEffect@ parent) override

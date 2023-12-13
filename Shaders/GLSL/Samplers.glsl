@@ -5,7 +5,6 @@ uniform sampler2D sNormalMap;
 uniform sampler2D sSpecMap;
 uniform sampler2D sEmissiveMap;
 uniform sampler2D sEnvMap;
-uniform sampler2D sSegmMap;
 uniform samplerCube sEnvCubeMap;
 uniform sampler2D sLightRampMap;
 uniform sampler2D sLightSpotMap;

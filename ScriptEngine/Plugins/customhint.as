@@ -1,5 +1,4 @@
 #include "ScriptEngine/Plugins/BasePlugin.as"
-#include "ScriptEngine/Utils.as"
 
 
 class customhint : BasePlugin
@@ -46,10 +45,8 @@ class customhint : BasePlugin
 
         if (trigger == "mouth")
             SubscribeToEvent("MouthTrigger", "HandleMouthTrigger");
-        else if (trigger.Contains("tap"))
+        else
             SubscribeToEvent("MouseEvent", "HandleMouseEvent");
-        else if (MaskEngine::HAND_GESTURE_NAMES.Find(trigger) != -1)
-            SubscribeToEvent("GestureEvent", "HandleGestureEvent");
 
         return true;
     }
@@ -121,15 +118,6 @@ class customhint : BasePlugin
     void HandleMouthTrigger(StringHash eventType, VariantMap& eventData)
     {
         if (eventData["Opened"].GetBool())
-            tap = true;
-    }
-
-    void HandleGestureEvent(StringHash eventType, VariantMap& eventData)
-    {   
-        VariantMap gestureMap = eventData["GestureFigures"]
-            .GetVariantVector()[0]
-            .GetVariantMap();
-        if (trigger == gestureMap["Gesture"].GetString())
             tap = true;
     }
 }

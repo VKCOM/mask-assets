@@ -1,8 +1,5 @@
-#if defined(COMPILEPS) && defined(ANDROID_OES)
-#extension GL_OES_EGL_image_external : require
-#endif
-
 #include "Uniforms.glsl"
+#include "Samplers.glsl"
 #include "Transform.glsl"
 #include "ScreenPos.glsl"
 #include "Fog.glsl"
@@ -15,9 +12,7 @@ varying HIGHP_AUTO vec4 vWorldPos;
     varying vec4 vColor;
 #endif
 
-//#ifdef ANDROID_OES
-//precision mediump float;
-//#endif
+// zzz - this line is 603
 
 void VS()
 {
@@ -44,15 +39,10 @@ void VS()
 vec4 I420toRGB(vec3 yuv)
 {
     const vec3 offset = vec3(-0.0627451017, -0.501960814, -0.501960814);
-#if defined(BT709_COLOR_SPACE)
-    const vec3 Rcoeff = vec3(1.1644,  0.000,   1.7927);
-    const vec3 Gcoeff = vec3(1.1644, -0.2132, -0.5329);
-    const vec3 Bcoeff = vec3(1.1644,  2.1124,  0.000);
-#else
-    const vec3 Rcoeff = vec3(1.1644,  0.000,   1.596);
-    const vec3 Gcoeff = vec3(1.1644, -0.3918, -0.813);
-    const vec3 Bcoeff = vec3(1.1644,  2.0172,  0.000);
-#endif
+    const vec3 Rcoeff = vec3(1.164,  0.000,  1.596);
+    const vec3 Gcoeff = vec3(1.164, -0.391, -0.813);
+    const vec3 Bcoeff = vec3(1.164,  2.018,  0.000);
+
     
     yuv += offset;
     return vec4(   dot(yuv, Rcoeff),
@@ -61,40 +51,18 @@ vec4 I420toRGB(vec3 yuv)
                    1.0 );
 }
 
-#if defined(COMPILEPS)
- 
-#if defined(ANDROID_OES)
-uniform samplerExternalOES 	sDiffMap;
-#else
-uniform sampler2D sDiffMap;
-uniform sampler2D sNormalMap;
-uniform sampler2D sSpecMap;
-
 #define TextureY sDiffMap
 #define TextureU sNormalMap
 #define TextureV sSpecMap
-#endif
-
-#endif
-
-
-
 
 
 void PS()
 {
-    #if defined(ANDROID_OES)
-     vec4   diffColor =   texture2D(sDiffMap, vTexCoord);
-    #elif defined(NV12)
-     vec4   diffColor =   I420toRGB(  vec3( texture2D(TextureY, vTexCoord).x,
-                                            texture2D(TextureU, vTexCoord).ra) );
-    #else
      vec4   diffColor =   I420toRGB(  vec3( texture2D(TextureY, vTexCoord).x,
                                             texture2D(TextureU, vTexCoord).x,
                                             texture2D(TextureV, vTexCoord).x ) );        // should *cMatDiffColor ?
     //vec4 diffColor = texture2D(sDiffMap, vTexCoord);
-    #endif
-    
+
     #ifdef VERTEXCOLOR
         diffColor *= vColor;
     #endif

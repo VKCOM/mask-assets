@@ -1,4 +1,4 @@
-<technique vs="CopyFramebuffer" ps="CopyFramebuffer">
+<technique vs="Yuv2Rgb" ps="Yuv2Rgb">
     <pass name="base" />
     <pass name="prepass" psdefines="PREPASS" />
     <pass name="material" />

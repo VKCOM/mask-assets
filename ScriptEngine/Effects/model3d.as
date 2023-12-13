@@ -1,6 +1,5 @@
 #include "ScriptEngine/Effects/Base/BaseEffect.as"
 #include "ScriptEngine/Effects/Base/BaseAnimation.as"
-#include "ScriptEngine/Utils.as"
 
 
 namespace MaskEngine
@@ -22,8 +21,8 @@ class model_texture_animation
     String texture_resource;
 
     // From artist's settings in 'mask.json'
-    String trigger_start = "";
-    String trigger_stop = "";
+    String trigger_start;
+    String trigger_stop;
     float fps = 30.0;
 
     // Runtime variables
@@ -66,17 +65,12 @@ class model_texture_animation
             return;
         }
 
-        if (texture_desc.Contains("animation") && trigger_start == "")
-            start();
-
+        // Sunscriptions
         if (trigger_start == "tap" || trigger_stop == "tap")
             SubscribeToEvent("MouseEvent", "HandleTapEvent");
 
         if (trigger_start == "face_found" || trigger_stop == "face_lost")
             SubscribeToEvent("UpdateFaceDetected", "HandleFaceDetected");
-
-        if (HAND_GESTURE_NAMES.Find(trigger_start) != -1 || HAND_GESTURE_NAMES.Find(trigger_stop) != -1)
-            SubscribeToEvent("GestureEvent", "HandleGestureEvent");
 
         SubscribeToEvent("Update", "HandleUpdate");
     }
@@ -133,10 +127,9 @@ class model_texture_animation
                     trigger_stop = animation_parameters.Get("trigger_stop").GetString();
                 
                 if (animation_parameters.Contains("fps"))
-                {
                     fps = animation_parameters.Get("fps").GetFloat();
-                }
-                else if (animation_parameters.Contains("timeline"))
+
+                if (animation_parameters.Contains("timeline"))
                 {
                     JSONValue timeline = animation_parameters.Get("timeline");
                     if (timeline.isArray && timeline.size > 0)
@@ -177,7 +170,8 @@ class model_texture_animation
                     }
                     hasTimeline = true;
                 }
-                else if (animation_parameters.Contains("timeline_ex"))
+
+                if (animation_parameters.Contains("timeline_ex"))
                 {
                     JSONValue timeline_ex = animation_parameters.Get("timeline_ex");
                     if (timeline_ex.isArray && timeline_ex.size > 0)
@@ -261,20 +255,6 @@ class model_texture_animation
         }
     }
 
-    private void HandleGestureEvent(StringHash eventType, VariantMap& eventData)
-    {
-        VariantMap gestureMap = eventData["GestureFigures"]
-            .GetVariantVector()[0]
-            .GetVariantMap();
-        String gesture = gestureMap["Gesture"].GetString();
-        
-        if (!running && trigger_start == gesture)
-            start();
-
-        if (running && trigger_stop == gesture)
-            stop(trigger_start != "face_found");
-    }
-
     private void HandleUpdate(StringHash eventType, VariantMap& eventData)
     {
         if (running)
@@ -299,6 +279,8 @@ class model_texture_animation
                 stop(trigger_start == "tap");
                 return;
             }
+
+            log.Info("frame: " + frame);
 
             String texture_path = texturePaths[frame];
             Texture@ texture = cache.GetResource(texture_resource, texture_path);
@@ -520,9 +502,11 @@ class model3d : BaseEffectImpl
                 check Unload      
         */
         
-
+        // XMLFile@ sky = cache.GetResource("XMLFile", "Textures/Sky.xml");
+        // Print(sky.ToString());
 
         // Parse single or multiple materials
+        Material@ mat;
         if (effect_desc.Get("material").isArray)
         {
             for (uint i = 0; i < effect_desc.Get("material").size; i++)
@@ -619,27 +603,14 @@ class model3d : BaseEffectImpl
 
                 String key = keys[i];
                 JSONValue value = parameters.Get(key);
+
+                // Make string from array ("aka Vector4" - rgba)
                 String valueString = "";
-
-                if (value.isArray) 
-                {
-                    // Make string from array ("aka Vector4" - rgba)
-                    for (uint j = 0; j < value.size; j++)
-                        valueString += value[j].GetFloat() + " ";
-
-                } 
-                else if (value.isNumber)
-                {
-                    valueString += value.GetFloat() + "";
-
-                } else 
-                {
-                    log.Warning("model3d : material parameter \"" + key + "\" unsupported type.");
-                }
+                for (uint j = 0; j < value.size; j++)
+                    valueString += value[j].GetFloat() + " ";
 
                 // Replace `Vector4` with string
                 parameters.Set(key, JSONValue(valueString));
-                
             }
 
             material_desc.Set("shaderParameters", parameters);
@@ -662,29 +633,21 @@ class model3d : BaseEffectImpl
                 JSONValue value = textures.Get(key);
                 String valueString;
 
-
                 // Animation is NOT specified for this texture
-                if (value.isString) {
+                if (value.isString)
                     valueString = value.GetString();
-                }
+
                 // Animation IS specified for this texture
-                else if (value.isObject)
+                if (value.isObject)
                 {
                     if (value.Contains("texture"))
                     {
                         valueString = value.Get("texture").GetString();
-    
                         textureAnimations.Push(
                             model_texture_animation(material, key, value)
                         );
                     }
                 }
-
-                // will not support animation_textures for now ...
-                if (key == "environment") 
-                {
-                    valueString = PreprocessEnvTexture(valueString);
-                } 
 
                 textures.Set(key, JSONValue(valueString));
             }
@@ -704,38 +667,6 @@ class model3d : BaseEffectImpl
         } 
 
         return material;
-    }
-
-    /* Will do something good)))
-    */
-    String PreprocessEnvTexture(String envTexture) {
-
-        //  if xml file exist then use it 
-        //  else will create 
-        // if need to disable use xml with Texture2D type
-        String extension = GetExtension(envTexture, false);
-        if (extension == ".xml" || !cache.Exists(envTexture) ) return envTexture;
-
-        String path = GetPath(envTexture);
-        String xmlFileFullPath = ReplaceExtension(envTexture, ".xml"); // ??? will do cross platform ???
-        String xmlFileName = GetFileName(xmlFileFullPath);
-
-        // does support vertical layout?
-        String envTextureXMLString = 
-        "<cubemap>" +
-            "<image name=\"" + xmlFileName + extension + "\" layout=\"horizontal\" />" +
-        "</cubemap>";
-
-        XMLFile envXMLFile;
-        envXMLFile.FromString(envTextureXMLString);
-        
-        File@ file = File(xmlFileFullPath, FILE_WRITE);
-
-        envXMLFile.Save(file);
-        log.Error(file.name);
-        file.Close(); // NOTE! always close files
-
-        return xmlFileFullPath;
     }
 
     /* Parses `animation` of a model description, creates `AnimationModel`
@@ -777,6 +708,10 @@ class model3d : BaseEffectImpl
         String triggerStart = ani_desc.Get("trigger_start").GetString();
         String triggerStop = ani_desc.Get("trigger_stop").GetString();
 
+        // hehe is a num of frames
+        // AnimationState@ animState = animatedModel.GetAnimationState(0);
+        // Animation@ anim = animState.animation;
+        // Print(anim.memoryUse);
 
         SubscribeToEvent(START_ANIMATION_EVENT, "HandleStartAnimation");
         SubscribeToEvent(STOP_ANIMATION_EVENT, "HandleStopAnimation");
@@ -983,13 +918,6 @@ class model3d : BaseEffectImpl
                 else
                 {
                     _SetVisible(false);
-                }
-            } else if (!_anchor.empty && _anchor == "face") {
-                if (poiData[_faceIdx]["Detected"].GetBool() &&
-                poiData[_faceIdx]["PoiMap"].GetVariantMap().Contains(FACE_CENTER_OFFSET))
-                {
-                	Vector3 anchor_point = poiData[_faceIdx]["PoiMap"].GetVariantMap()[FACE_CENTER_OFFSET].GetVector3();
-                	_anchorNode.position = anchor_point;
                 }
             }
         }

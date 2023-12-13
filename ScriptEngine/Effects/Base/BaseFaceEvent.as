@@ -39,7 +39,7 @@ class BaseFaceEvent : BaseEvent
         prevFaceState = detected;
     }
 
-    bool NeedCall(bool bFound)
+    bool NeedCall(bool bOpen)
     {
         log.Warning("Override this method in inherited class");
         return false;

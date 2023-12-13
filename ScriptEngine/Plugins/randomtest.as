@@ -1,6 +1,5 @@
 #include "ScriptEngine/Plugins/BasePlugin.as"
 #include "ScriptEngine/Effects/Base/BaseAnimation.as"
-#include "ScriptEngine/Utils.as"
 
 
 class randomtest : BasePlugin
@@ -152,10 +151,8 @@ class randomtest : BasePlugin
         SubscribeToEvent("Update", "HandleUpdate");
         if (trigger == "mouth")
             SubscribeToEvent("MouthTrigger", "HandleMouthTrigger");
-        else if (trigger.Contains("tap"))
+        else
             SubscribeToEvent("MouseEvent", "HandleMouseEvent");
-        else if (MaskEngine::HAND_GESTURE_NAMES.Find(trigger) != -1)
-            SubscribeToEvent("GestureEvent", "HandleGestureEvent");
 
         return true;
     }
@@ -438,14 +435,5 @@ class randomtest : BasePlugin
             if (trigger == "tap+recording" || trigger == "recording")
                 checkState(true);
         }
-    }
-
-    void HandleGestureEvent(StringHash eventType, VariantMap& eventData)
-    {   
-        VariantMap gestureMap = eventData["GestureFigures"]
-            .GetVariantVector()[0]
-            .GetVariantMap();
-        if (trigger == gestureMap["Gesture"].GetString())
-            checkState(false);
     }
 }

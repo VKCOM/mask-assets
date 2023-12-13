@@ -2,15 +2,7 @@
 namespace MaskEngine
 {
 
-Vector4 ONES_VECTOR = Vector4(1.0, 1.0, 1.0, 1.0);
-
-Array<String> HAND_GESTURE_NAMES = {
-    "PALM", "OK", "POINTER", "KHABIB", "FIST", "VICTORY",
-    "NOT_GESTURE", "NOT_HAND", "ONE", "ROCK", "CROSS", "HOMMIE",
-    "THUMB", "THUMB_UP", "THUMB_DOWN",
-    "HEART", "HEART_LEFT", "HEART_RIGHT",
-    "OTHER", "UNDEFINED_GESTURE"
-};
+Vector4 one_vector = Vector4(1.0, 1.0, 1.0, 1.0);
 
 
 /**

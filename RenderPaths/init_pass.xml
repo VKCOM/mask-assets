@@ -1,8 +1,10 @@
 <renderpath>
     <command type="clear" color=".5 .5 .5" depth="1.0" stencil="0" />
 
-    <command type="quad" tag="Yuv2Rgb" vs="CopyFramebuffer" ps="CopyFramebuffer" output="viewport">
-        <texture unit="diffuse"  name="src_frame_y" />
+    <command type="quad" tag="Yuv2Rgb" vs="Yuv2Rgb" ps="Yuv2Rgb" output="viewport">
+      <texture unit="diffuse"  name="src_frame_y" />
+      <texture unit="normal"   name="src_frame_u" />
+      <texture unit="specular" name="src_frame_v" />
     </command>
 
 </renderpath>
