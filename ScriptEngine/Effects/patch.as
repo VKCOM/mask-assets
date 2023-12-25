@@ -14,6 +14,7 @@ class patch : BaseEffectImpl
     Array<BillboardPosition> _offset;
     String _visibleType;
     Node@ _node;
+    Vector2 _node_initia_scale;
     BillboardSet@ _bbSet;
     BaseEffect@ _texture;
     String _anchor;
@@ -21,8 +22,10 @@ class patch : BaseEffectImpl
     Vector2 _lastRTSize;
     Vector2 _lastSourceFrame;
     bool _face_anchor = false;
+    bool _hand_anchor = false;
     bool _allow_rotation = true;
     Array<VariantMap> poiData;
+    VariantMap handGestureData;
     BaseEffect@ animationVisible;
     Quaternion _rotateOrigin;
 
@@ -55,7 +58,8 @@ class patch : BaseEffectImpl
             log.Info("patch : anchor not specified, using \"free\"");
             _anchor = "free";
         }
-        if(effect_desc.Get("size").isArray) 
+
+        if (effect_desc.Get("size").isArray) 
         {
             ReadPosition2D(effect_desc.Get("size"), _size[0], _size[1]);
         } 
@@ -76,10 +80,10 @@ class patch : BaseEffectImpl
         }
 
         _node = scene.CreateChild();
+        _node_initia_scale = _node.scale2D;
         _bbSet = _node.CreateComponent("BillboardSet");
         _bbSet.numBillboards = 1;
         _bbSet.sorted = false;
-
 
         @_texture = AddChildEffect("texture");
         if (_texture is null)
@@ -88,22 +92,21 @@ class patch : BaseEffectImpl
             return false;
         }
 
-        if(effect_desc.Contains("texture")) 
+        if (effect_desc.Contains("texture")) 
         {
             if (!_texture.Init(effect_desc.Get("texture"), this))
             {
                 log.Error("Failed to init texture effect");
                 return false;
             }
-
-        } else {
+        }
+        else
+        {
             JSONFile@ jsonFile = JSONFile();
             jsonFile.FromString("{}");
             _texture.Init(jsonFile.GetRoot(), this);
             log.Info("patch : texture not specified, using white color");
-
         }
-
 
         AddTags(effect_desc, _node);
 
@@ -120,7 +123,6 @@ class patch : BaseEffectImpl
             // _rotateOrigin.FromEulerAngles(0.0, 0.0, 0.0, 0.0);
             _rotateOrigin = _node.rotation;
         }
-
 
         if (_anchor == "fullscreen")
         {
@@ -147,7 +149,7 @@ class patch : BaseEffectImpl
 
             Billboard@ bb = _bbSet.billboards[0];
 
-            bb.position = Vector3(0.0,0.0,0.0);
+            bb.position = Vector3(0, 0, 0);
             bb.size = Vector2(_size[0].pix, _size[1].pix);
             bb.enabled = true;
 
@@ -174,7 +176,7 @@ class patch : BaseEffectImpl
             _node.parent = faceNode;
             _node.position = Vector3(0, 0, 0);
 
-            FaceCameraMode  fc = FC_NONE;
+            FaceCameraMode fc = FC_NONE;
             _bbSet.faceCameraMode = fc;
             if (effect_desc.Get("allow_rotation").isBool)
             {
@@ -182,12 +184,21 @@ class patch : BaseEffectImpl
                 _allow_rotation = effect_desc.Get("allow_rotation").GetBool();
             }
 
-
             if (HasRelativeValue(_size) || HasRelativeValue(_offset))
-            {
                 SubscribeToEvent("SrcFrameUpdate", "HandleSrcFrameUpdate");
-            }
+
             SubscribeToEvent("UpdateFacePOI", "UpdateFacePOI");
+        }
+        else if (_anchor == "palm")
+        {
+            _hand_anchor = true;
+
+            _node.position = Vector3(0, 0, 0);
+
+            if (effect_desc.Get("allow_rotation").isBool)
+                _allow_rotation = effect_desc.Get("allow_rotation").GetBool();
+
+            SubscribeToEvent("UpdateHandGesture", "HandleUpdateHandGesture");
         }
         else if (_anchor == "ar_background")
         {
@@ -252,7 +263,7 @@ class patch : BaseEffectImpl
                     return false;
                 }
 
-                //hideAction.SetParameter("delay", Variant(effect_desc.Get(delayParam[i]).GetFloat()));
+                // hideAction.SetParameter("delay", Variant(effect_desc.Get(delayParam[i]).GetFloat()));
             }
 
         }
@@ -272,7 +283,6 @@ class patch : BaseEffectImpl
                 return false;
             }
         }
-        
 
         Array<String> reservedField = { "texture", "size", "offset", "rotation" };
         _inited = LoadAddons(effect_desc, reservedField);
@@ -288,9 +298,7 @@ class patch : BaseEffectImpl
     void Update(float timeDelta)
     {
         if (!_inited)
-        {
             return;
-        }
 
         if (_visibleType == VISIBLE_ALWAYS)
         {
@@ -310,26 +318,18 @@ class patch : BaseEffectImpl
             animationVisible.Apply();
         }
 
-        if (!_node.enabled)
-        {
+        if (!_node.enabled ||
+            _anchor == "fullscreen" ||
+            _anchor == "ar_background"
+        )
             return;
-        }
-
-        if (_anchor == "fullscreen")
-        {
-            return;
-        }
-        if (_anchor == "ar_background")
-        {
-            return;
-        }
 
         if (_face_anchor)
         {
-            if (poiData[_faceIdx]["PoiMap"].GetVariantMap().Contains(_anchor) &&
-                poiData[_faceIdx]["Detected"].GetBool())
-            {
-                Vector3     anchor_point = poiData[_faceIdx]["PoiMap"].GetVariantMap()[_anchor].GetVector3();
+            if (poiData[_faceIdx]["Detected"].GetBool() &&
+                poiData[_faceIdx]["PoiMap"].GetVariantMap().Contains(_anchor)
+            ) {
+                Vector3 anchor_point = poiData[_faceIdx]["PoiMap"].GetVariantMap()[_anchor].GetVector3();
 
                 Billboard@ bb = _bbSet.billboards[0];
                 bb.size = GetPositionValue2D(_size, _lastRTSize);
@@ -339,9 +339,31 @@ class patch : BaseEffectImpl
                 _bbSet.Commit();
                 
                 if (!_allow_rotation) 
-                {
                     _node.rotation = _node.parent.rotation.Inverse() * _rotateOrigin;
-                }
+            }
+            else
+            {
+                _SetVisible(false);
+            }
+        }
+        else if (_hand_anchor)
+        {
+            if (handGestureData["Detected"].GetBool() &&
+                handGestureData["Gesture"].GetString().ToUpper() == "PALM"
+            ) {
+                Vector2 palmBasePosition = handGestureData["Position"].GetVector2();
+                float angle = handGestureData["AngleDegrees"].GetFloat();
+                float size = handGestureData["Size"].GetFloat();
+
+                _node.position = Vector3(palmBasePosition.x, palmBasePosition.y, 0.0) + GetPositionValue3D(_offset, _lastSourceFrame);
+                _node.scale2D = _node_initia_scale * 2.0 * size;
+
+                Billboard@ bb = _bbSet.billboards[0];
+                bb.size = GetPositionValue2D(_size, _lastRTSize);
+                if (_allow_rotation) 
+                    bb.rotation = -angle;
+                bb.enabled = true;
+                _bbSet.Commit();
             }
             else
             {
@@ -355,7 +377,7 @@ class patch : BaseEffectImpl
         Vector2 size = eventData["TargetSize"].GetVector2();
         Vector2 sourceFrame = eventData["Size"].GetVector2();
 
-        int   angle = int(0.5 + eventData["Angle"].GetFloat());
+        int angle = int(0.5 + eventData["Angle"].GetFloat());
 
         if (angle == 90 || angle == 270)
         {
@@ -369,23 +391,19 @@ class patch : BaseEffectImpl
         if (_anchor == "fullscreen")
         {
             _bbSet.billboards[0].size = GetFullscreenSize(size, sourceFrame);
-
             ApplyFitMode(_bbSet.billboards[0], size);
-
             _bbSet.Commit();
         }
         else
         {
+            // Is there a reason to recreate it here each frame?
             ScreenPatchAnchor@ screenAnchor = FindScreenAnchor(_anchor);
             if (screenAnchor !is null)
             {
                 Billboard@ bb = _bbSet.billboards[0];
-         
                 _node.position = Vector3(sourceFrame * screenAnchor.position, 0.0f) + GetPositionValue3D(_offset, sourceFrame);
-               
                 bb.size = GetPositionValue2D(_size, sourceFrame / 2.0);
             }
-
             _bbSet.Commit();
         }
     }
@@ -396,6 +414,10 @@ class patch : BaseEffectImpl
         poiData[faceIndex] = eventData;
     }
 
+    void HandleUpdateHandGesture(StringHash eventType, VariantMap &eventData)
+    {
+        handGestureData = eventData;
+    }
 
     Node@ GetNode(uint index) override
     {
@@ -426,7 +448,6 @@ class patch : BaseEffectImpl
                 fullScreenSize = Vector2(fullScreenSize.x, fullScreenSize.x / sfAspect);
             }
         }
-
         return fullScreenSize;
     }
 
@@ -440,6 +461,12 @@ class patch : BaseEffectImpl
         return res;
     }
 
+    float GetPositionValue1D(BillboardPosition& position, const Vector2& frameSize)
+    {
+        return position.w * frameSize.x + position.h * frameSize.y + position.pix +
+            position.max * Max(frameSize.x, frameSize.y) + position.min * Min(frameSize.x, frameSize.y);
+    }
+
     Vector2 GetPositionValue2D(Array<BillboardPosition>& position, const Vector2& frameSize)
     {
         return Vector2(GetPositionValue1D(position[0], frameSize), GetPositionValue1D(position[1], frameSize));
@@ -448,12 +475,6 @@ class patch : BaseEffectImpl
     Vector3 GetPositionValue3D(Array<BillboardPosition>& position, const Vector2& frameSize)
     {
         return Vector3(GetPositionValue2D(position, frameSize), GetPositionValue1D(position[2], frameSize));
-    }
-
-    float GetPositionValue1D(BillboardPosition& position, const Vector2& frameSize)
-    {
-        return position.w * frameSize.x + position.h * frameSize.y + position.pix +
-            position.max * Max(frameSize.x, frameSize.y) + position.min * Min(frameSize.x, frameSize.y);
     }
 
     void ApplyFitMode(Billboard@ billboard, const Vector2& frameSize)
