@@ -14,7 +14,8 @@ class patch : BaseEffectImpl
     Array<BillboardPosition> _offset;
     String _visibleType;
     Node@ _node;
-    Vector2 _node_initia_scale;
+    Node@ _anchorNode;
+    Vector2 _node_initial_scale;
     BillboardSet@ _bbSet;
     BaseEffect@ _texture;
     String _anchor;
@@ -28,6 +29,7 @@ class patch : BaseEffectImpl
     VariantMap handGestureData;
     BaseEffect@ animationVisible;
     Quaternion _rotateOrigin;
+    Vector2 _screenSize;
 
     float time = 0;
 
@@ -80,7 +82,7 @@ class patch : BaseEffectImpl
         }
 
         _node = scene.CreateChild();
-        _node_initia_scale = _node.scale2D;
+        _node_initial_scale = _node.scale2D;
         _bbSet = _node.CreateComponent("BillboardSet");
         _bbSet.numBillboards = 1;
         _bbSet.sorted = false;
@@ -115,7 +117,11 @@ class patch : BaseEffectImpl
         if (effect_desc.Get("rotation").isArray)
         {
             JSONValue rotation = effect_desc.Get("rotation");
-            _rotateOrigin.FromEulerAngles(rotation[0].GetFloat(), rotation[1].GetFloat(), rotation[2].GetFloat());
+            _rotateOrigin.FromEulerAngles(
+                rotation[0].GetFloat(),
+                rotation[1].GetFloat(),
+                rotation[2].GetFloat()
+            );
             _node.rotation = _rotateOrigin;
         }
         else
@@ -167,13 +173,13 @@ class patch : BaseEffectImpl
                 _visibleType = VISIBLE_FACE;
             }
 
-            Node@ faceNode = scene.GetChild(_faceNodeName);
-            if (faceNode is null)
+            _anchorNode = scene.GetChild(_faceNodeName);
+            if (_anchorNode is null)
             {
                 log.Error("Failed to find face node");
                 return false;
             }
-            _node.parent = faceNode;
+            _node.parent = _anchorNode;
             _node.position = Vector3(0, 0, 0);
 
             FaceCameraMode fc = FC_NONE;
@@ -193,10 +199,15 @@ class patch : BaseEffectImpl
         {
             _hand_anchor = true;
 
-            _node.position = Vector3(0, 0, 0);
+            _anchorNode = scene.CreateChild("palm_node");
+            _anchorNode.position = Vector3(0, 0, 0);
+            _node.parent = _anchorNode;
 
             if (effect_desc.Get("allow_rotation").isBool)
                 _allow_rotation = effect_desc.Get("allow_rotation").GetBool();
+
+            if (HasRelativeValue(_size) || HasRelativeValue(_offset))
+                SubscribeToEvent("SrcFrameUpdate", "HandleSrcFrameUpdate");
 
             SubscribeToEvent("UpdateHandGesture", "HandleUpdateHandGesture");
         }
@@ -351,16 +362,18 @@ class patch : BaseEffectImpl
             if (handGestureData["Detected"].GetBool() &&
                 handGestureData["Gesture"].GetString().ToUpper() == "PALM"
             ) {
-                Vector2 palmBasePosition = handGestureData["Position"].GetVector2();
+                Vector2 palmPosition = handGestureData["Position"].GetVector2();
                 float angle = handGestureData["AngleDegrees"].GetFloat();
                 float size = handGestureData["Size"].GetFloat();
 
-                _node.position = Vector3(palmBasePosition.x, palmBasePosition.y, 0.0) + GetPositionValue3D(_offset, _lastSourceFrame);
-                _node.scale2D = _node_initia_scale * 2.0 * size;
+                _anchorNode.worldPosition = Vector3(palmPosition.x, palmPosition.y, 0.0);
+                _node.position = GetPositionValue3D(_offset, _lastSourceFrame);
+                _anchorNode.rotation2D = angle;
+                _anchorNode.scale2D = _node_initial_scale * 2.0 * size;
 
                 Billboard@ bb = _bbSet.billboards[0];
                 bb.size = GetPositionValue2D(_size, _lastRTSize);
-                if (_allow_rotation) 
+                if (_allow_rotation)
                     bb.rotation = -angle;
                 bb.enabled = true;
                 _bbSet.Commit();
@@ -376,6 +389,8 @@ class patch : BaseEffectImpl
     {
         Vector2 size = eventData["TargetSize"].GetVector2();
         Vector2 sourceFrame = eventData["Size"].GetVector2();
+
+        _screenSize = size;
 
         int angle = int(0.5 + eventData["Angle"].GetFloat());
 
@@ -546,7 +561,7 @@ class patch : BaseEffectImpl
     {
         if (_texture is null)
             return "";
-        
+
         return _texture.GetTextureFile();
     }
 }
