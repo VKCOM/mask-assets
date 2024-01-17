@@ -1034,7 +1034,7 @@ class model3d : BaseEffectImpl
                             2500
                         )
                     );
-                    _anchorNode.rotation = Quaternion(0, 0, angle);
+                    _anchorNode.rotation2D = angle;
                     _anchorNode.scale = _anchor_node_initial_scale * 3.0 * size;
                     _node.scale = _node_initial_scale * 3.0 * size;
                 }

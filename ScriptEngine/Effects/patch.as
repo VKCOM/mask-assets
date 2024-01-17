@@ -373,9 +373,9 @@ class patch : BaseEffectImpl
 
                 Billboard@ bb = _bbSet.billboards[0];
                 bb.size = GetPositionValue2D(_size, _lastRTSize);
-                if (_allow_rotation)
-                    bb.rotation = -angle;
                 bb.enabled = true;
+                if (_allow_rotation)
+                    bb.rotation = -angle + _rotateOrigin.eulerAngles.z;
                 _bbSet.Commit();
             }
             else
