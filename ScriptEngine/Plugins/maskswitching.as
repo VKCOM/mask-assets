@@ -11,7 +11,6 @@ class maskswitching : BasePlugin
     bool random = false;
     String trigger = "directional_tap";
     bool faceLost = true;
-    Array<String> menuIconFiles = {};
 
     bool faceSensitive = true;
     bool usingFrontCamera = true;
@@ -43,10 +42,6 @@ class maskswitching : BasePlugin
         else if (trigger == "tap") SubscribeToEvent("MouseEvent", "HandleTapEvent");
         else if (trigger == "directional_tap") SubscribeToEvent("MouseEvent", "HandleDirectionalTapEvent");
         else if (MaskEngine::HAND_GESTURE_NAMES.Find(trigger) != -1) SubscribeToEvent("GestureEvent", "HandleGestureEvent");
-        else if (trigger == "menu") {
-            SubscribeToEvent("GalleryAssetSelect", "HandleGalleryAssetSelect");
-            maskengine.ShowGallery(DefaultImages, menuIconFiles, 0);
-        }
 
         SubscribeToEvent("PostUpdate", "HandlePostUpdate");
         SubscribeToEvent("UpdateFaceDetected", "HandleUpdateFaceDetected");
@@ -89,15 +84,6 @@ class maskswitching : BasePlugin
                 if (tags.isArray)
                     for (uint i = 0; i < tags.size; i++)
                         maskTags.Push(tags[i].GetString());
-            }
-
-            // Menu icons
-            if (plugin_config.Contains("menu_icons"))
-            {
-                JSONValue icons = plugin_config.Get("menu_icons");
-                if (icons.isArray)
-                    for (uint i = 0; i < icons.size; i++)
-                        menuIconFiles.Push(icons[i].GetString());
             }
         }
     }
@@ -197,11 +183,6 @@ class maskswitching : BasePlugin
             .GetVariantMap();
         if (trigger == gestureMap["Gesture"].GetString())
             switchMask(1);
-    }
-
-    void HandleGalleryAssetSelect(StringHash eventType, VariantMap& eventData)
-    {
-        current_mask = eventData["Index"].GetInt();
     }
 
     void HandlePostUpdate(StringHash eventType, VariantMap& eventData)
