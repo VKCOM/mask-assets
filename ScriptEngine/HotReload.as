@@ -53,7 +53,9 @@ namespace MaskEngine
                         {
                             log.Error("File updated : " + fileName);
 
-                            if (fileName.EndsWith(".as") || fileName.EndsWith(".json"))
+                            cache.ReloadResourceWithDependencies(fileName);
+                            
+                            if (fileName.EndsWith(".as") || fileName.EndsWith("mask.json"))
                             {
                                 needReload = true;
                                 // ScriptFile @mainScript = cache.GetResource("ScriptFile", fileName);
@@ -64,7 +66,6 @@ namespace MaskEngine
                                 continue;
                             }
 
-                            cache.ReloadResourceWithDependencies(fileName);
                         }
                     }
 
