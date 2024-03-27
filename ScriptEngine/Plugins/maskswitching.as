@@ -41,7 +41,7 @@ class maskswitching : BasePlugin
         if (trigger == "mouth") SubscribeToEvent("MouthTrigger", "HandleMouthTrigger");
         else if (trigger == "tap") SubscribeToEvent("MouseEvent", "HandleTapEvent");
         else if (trigger == "directional_tap") SubscribeToEvent("MouseEvent", "HandleDirectionalTapEvent");
-        else if (MaskEngine::HAND_GESTURE_NAMES.Find(trigger) != -1) SubscribeToEvent("GestureEvent", "HandleGestureEvent");
+        else if (MaskEngine::HAND_GESTURE_NAMES.Find(trigger) != -1) SubscribeToEvent("UpdateHandGesture", "HandleUpdateHandGesture");
 
         SubscribeToEvent("PostUpdate", "HandlePostUpdate");
         SubscribeToEvent("UpdateFaceDetected", "HandleUpdateFaceDetected");
@@ -176,12 +176,9 @@ class maskswitching : BasePlugin
             switchMask(1);
     }
 
-    void HandleGestureEvent(StringHash eventType, VariantMap& eventData)
-    {   
-        VariantMap gestureMap = eventData["GestureFigures"]
-            .GetVariantVector()[0]
-            .GetVariantMap();
-        if (trigger == gestureMap["Gesture"].GetString())
+    void HandleUpdateHandGesture(StringHash eventType, VariantMap& eventData)
+    {
+        if (trigger == eventData["Gesture"].GetString().ToUpper())
             switchMask(1);
     }
 

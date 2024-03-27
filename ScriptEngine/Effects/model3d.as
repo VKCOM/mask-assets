@@ -76,7 +76,7 @@ class model_texture_animation
             SubscribeToEvent("UpdateFaceDetected", "HandleFaceDetected");
 
         if (HAND_GESTURE_NAMES.Find(trigger_start) != -1 || HAND_GESTURE_NAMES.Find(trigger_stop) != -1)
-            SubscribeToEvent("GestureEvent", "HandleGestureEvent");
+            SubscribeToEvent("UpdateHandGesture", "HandleUpdateHandGesture");
 
         SubscribeToEvent("Update", "HandleUpdate");
     }
@@ -261,12 +261,9 @@ class model_texture_animation
         }
     }
 
-    private void HandleGestureEvent(StringHash eventType, VariantMap& eventData)
+    private void HandleUpdateHandGesture(StringHash eventType, VariantMap& eventData)
     {
-        VariantMap gestureMap = eventData["GestureFigures"]
-            .GetVariantVector()[0]
-            .GetVariantMap();
-        String gesture = gestureMap["Gesture"].GetString();
+        String gesture = eventData["Gesture"].GetString().ToUpper();
         
         if (!running && trigger_start == gesture)
             start();
