@@ -1,5 +1,6 @@
 #include "ScriptEngine/Effects/Base/BaseEffect.as"
 
+
 namespace MaskEngine
 {
 
@@ -56,6 +57,7 @@ class light : BaseEffectImpl
                 Node@ faceNode = scene.GetChild(_faceNodeName);
                 if (faceNode !is null)
                 {
+                    log.Error("light: Failed to find face node");
                     return false;
                 }
                 _anchorNode = faceNode.CreateChild("Light_anchor");
@@ -104,12 +106,10 @@ class light : BaseEffectImpl
         light.lightType = light_type;
         light.range = 500.0f;
 
+        Vector3 color;
+        if (ReadVector3(effect_desc.Get("color"), color))
         {
-            Vector3 color;
-            if (ReadVector3(effect_desc.Get("color"), color))
-            {
-                light.color = Color(color.x, color.y, color.z);
-            }
+            light.color = Color(color.x, color.y, color.z);
         }
 
         if (effect_desc.Get("specular_intensity").isNumber)
@@ -134,7 +134,6 @@ class light : BaseEffectImpl
 
         Array<String> reservedField;
         _inited = LoadAddons(effect_desc, reservedField);
-
 
         return _inited;
     }
