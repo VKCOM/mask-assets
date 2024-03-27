@@ -81,8 +81,11 @@ class MaskScene
 
         for (uint i = 0; i < mask.effects.length; i++)
         {
-            if (mask.effects[i].GetName() == "light")
-            {
+            if (mask.effects[i].GetName() == "light" ||
+                mask.effects[i].GetName() == "ambientlight" ||
+                mask.effects[i].GetName() == "directlight" ||
+                mask.effects[i].GetName() == "pointlight"
+            ) {
                 has_custom_lights = true;
                 break;
             }
