@@ -319,6 +319,9 @@ class model3d : BaseEffectImpl
     Node@ _anchorNode;
     bool _created = false;
     Array<VariantMap> poiData;
+    VariantMap handGestureData;
+    Vector3 _node_initial_scale;
+    Vector3 _anchor_node_initial_scale;
 
     // Child wiggle effect
     BaseEffect@ _wiggly;
@@ -331,6 +334,8 @@ class model3d : BaseEffectImpl
     BaseAnimationImpl@ baseAnimation;
     String _animFileName;
     float _animSpeed;
+
+    Vector2 _screenSize;
 
 
     model3d()
@@ -372,6 +377,13 @@ class model3d : BaseEffectImpl
             // _anchorNode = _scene->CreateChild("ar_3d");
             _anchorNode = scene;
             _anchorNode.position = Vector3(0, 0, 0);
+        }
+        else if (_anchor == "palm")
+        {
+            _anchorNode = scene.CreateChild("palm_node");
+            _anchorNode.position = Vector3(0, 0, 0);
+            SubscribeToEvent("SrcFrameUpdate", "HandleSrcFrameUpdate");
+            SubscribeToEvent("UpdateHandGesture", "HandleUpdateHandGesture");
         }
         else
         {
@@ -449,11 +461,21 @@ class model3d : BaseEffectImpl
 
         Vector3 rot(0.0f, 0.0f, 0.0f);
         ReadVector3(effect_desc.Get("rotation"), rot);
-        _node.rotation = Quaternion(rot.x, rot.y, rot.z);
+        if (_anchor == "palm")
+            _anchorNode.rotation = Quaternion(rot.x, rot.y, rot.z);
+        else
+            _node.rotation = Quaternion(rot.x, rot.y, rot.z);
+
 
         Vector3 scale(1.0f, 1.0f, 1.0f);
         ReadVector3(effect_desc.Get("scale"), scale);
         _node.scale = scale;
+
+        if (_anchor == "palm")
+        {
+            _node_initial_scale = _node.scale;
+            _anchor_node_initial_scale = _anchorNode.scale;
+        }
 
         _SetVisible(false);
 
@@ -942,6 +964,16 @@ class model3d : BaseEffectImpl
         poiData[faceIndex] = eventData;
     }
 
+    void HandleUpdateHandGesture(StringHash eventType, VariantMap &eventData)
+    {
+        handGestureData = eventData;
+    }
+
+    void HandleSrcFrameUpdate(StringHash eventType, VariantMap& eventData)
+    {
+        _screenSize = eventData["TargetSize"].GetVector2();
+    }
+
 
 
     /* -------------------------------------------------------------------------- */
@@ -959,8 +991,9 @@ class model3d : BaseEffectImpl
             return;
         }
 
-        if (!maskengine.IsFaceDetected(_faceIdx))
-        {
+        if (!maskengine.IsFaceDetected(_faceIdx) &&
+            (IsValidPointOfInterestName(_anchor) || _anchor == "face")
+        ) {
             _SetVisible(false);
             return;
         }
@@ -969,24 +1002,55 @@ class model3d : BaseEffectImpl
         {
             _SetVisible(_visible);
 
-            if (!_anchor.empty && _anchor != "face")
+            if (_anchor.empty)
+                return;
+
+            if (_anchor == "face")
             {
-                if (poiData[_faceIdx]["PoiMap"].GetVariantMap().Contains(_anchor) &&
-                    poiData[_faceIdx]["Detected"].GetBool())
+                if (poiData[_faceIdx]["Detected"].GetBool() &&
+                    poiData[_faceIdx]["PoiMap"].GetVariantMap().Contains(FACE_CENTER_OFFSET)
+                ) {
+                	Vector3 anchor_point = poiData[_faceIdx]["PoiMap"].GetVariantMap()[FACE_CENTER_OFFSET].GetVector3();
+                	_anchorNode.position = anchor_point;
+                }
+            }
+            else if (_anchor == "palm")
+            {
+                if (handGestureData["Detected"].GetBool() &&
+                    handGestureData["Gesture"].GetString().ToUpper() == "PALM"
+                ) {
+                    Vector2 palmPosition = handGestureData["Position"].GetVector2();
+                    float angle = handGestureData["AngleDegrees"].GetFloat();
+                    float size = handGestureData["Size"].GetFloat();
+
+                    Camera @camera = scene.GetChild("Camera").GetComponent("Camera");
+                    _anchorNode.worldPosition = camera.ScreenToWorldPoint(
+                        Vector3(
+                            palmPosition.x / _screenSize.x + 0.5,
+                            palmPosition.y / _screenSize.y + 0.5,
+                            2500
+                        )
+                    );
+                    _anchorNode.rotation2D = angle;
+                    _anchorNode.scale = _anchor_node_initial_scale * 3.0 * size;
+                    _node.scale = _node_initial_scale * 3.0 * size;
+                }
+                else
                 {
+                    _SetVisible(false);
+                }
+            }
+            else
+            {
+                if (poiData[_faceIdx]["Detected"].GetBool() &&
+                    poiData[_faceIdx]["PoiMap"].GetVariantMap().Contains(_anchor)
+                ) {
                     Vector3 anchor_point = poiData[_faceIdx]["PoiMap"].GetVariantMap()[_anchor].GetVector3();
                     _anchorNode.position = anchor_point;
                 }
                 else
                 {
                     _SetVisible(false);
-                }
-            } else if (!_anchor.empty && _anchor == "face") {
-                if (poiData[_faceIdx]["Detected"].GetBool() &&
-                poiData[_faceIdx]["PoiMap"].GetVariantMap().Contains(FACE_CENTER_OFFSET))
-                {
-                	Vector3 anchor_point = poiData[_faceIdx]["PoiMap"].GetVariantMap()[FACE_CENTER_OFFSET].GetVector3();
-                	_anchorNode.position = anchor_point;
                 }
             }
         }
@@ -1025,4 +1089,5 @@ class model3d : BaseEffectImpl
         return baseAnimation;
     }
 }
+
 }
