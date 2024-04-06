@@ -155,7 +155,7 @@ class randomtest : BasePlugin
         else if (trigger.Contains("tap"))
             SubscribeToEvent("MouseEvent", "HandleMouseEvent");
         else if (MaskEngine::HAND_GESTURE_NAMES.Find(trigger) != -1)
-            SubscribeToEvent("GestureEvent", "HandleGestureEvent");
+            SubscribeToEvent("UpdateHandGesture", "HandleUpdateHandGesture");
 
         return true;
     }
@@ -440,12 +440,9 @@ class randomtest : BasePlugin
         }
     }
 
-    void HandleGestureEvent(StringHash eventType, VariantMap& eventData)
-    {   
-        VariantMap gestureMap = eventData["GestureFigures"]
-            .GetVariantVector()[0]
-            .GetVariantMap();
-        if (trigger == gestureMap["Gesture"].GetString())
+    void HandleUpdateHandGesture(StringHash eventType, VariantMap& eventData)
+    {
+        if (trigger == eventData["Gesture"].GetString().ToUpper())
             checkState(false);
     }
 }
