@@ -110,7 +110,8 @@ class pickerui : BasePlugin
         galleryAssetUpdateEventData["Action"] = "user_select";
 
         SendEvent(
-            MaskEngine::GALLERY_ASSET_UPDATE_EVENT,galleryAssetUpdateEventData
+            MaskEngine::GALLERY_ASSET_UPDATE_EVENT,
+            galleryAssetUpdateEventData
         );
     }
 
