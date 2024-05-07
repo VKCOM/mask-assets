@@ -1,10 +1,13 @@
 #include "ScriptEngine/Plugins/BasePlugin.as"
 #include "ScriptEngine/Utils.as"
+#include "ScriptEngine/Constants.as"
 
 
 class pickerui : BasePlugin
 {
     String pluginName = "pickerui";
+
+    GalleryMode pickerMode = DefaultImages;
 
     Array<String> mask_tags = {};
     Array<String> picker_icon_paths = {};
@@ -27,8 +30,17 @@ class pickerui : BasePlugin
         }
 
         SubscribeToEvent("PostUpdate", "HandlePostUpdate");
-        SubscribeToEvent("GalleryAssetSelect", "HandleGalleryAssetSelect");
-        maskengine.ShowGallery(DefaultImages, picker_icon_paths, current_mask);
+        SubscribeToEvent(
+            "GalleryAssetSelect",
+            "HandleGalleryAssetSelect"
+        );
+
+        maskengine.ShowGallery(
+            pickerMode,
+            picker_icon_paths,
+            current_mask
+        );
+        OnAssetSelected();
 
         return true;
     }
@@ -47,7 +59,7 @@ class pickerui : BasePlugin
                 }
                 else
                 {
-                    log.Error("PickerUIPlugin: icons must be array");
+                    log.Error("PickerUIPlugin: `icons` must be an array");
                 }
             }
 
@@ -61,26 +73,58 @@ class pickerui : BasePlugin
                 }
                 else
                 {
-                    log.Error("PickerUIPlugin: icons must be array");
+                    log.Error("PickerUIPlugin: `icons` must be an array");
                 }
             }
         }
     }
 
 
-    void HandlePostUpdate(StringHash eventType, VariantMap& eventData)
+    bool VerifySelectedIndex(uint idx)
     {
         if (current_mask < 0 || current_mask >= mask_tags.length)
         {
             log.Error("PickerUIPlugin: menu index is out of bound for picker items");
+            return false;
+        }
+        return true;
+    }
+
+    void OnAssetSelected()
+    {
+        if (!VerifySelectedIndex(current_mask))
+            return;
+        
+        VariantMap galleryAssetUpdateEventData;
+
+        String filename = picker_icon_paths[current_mask];
+        Texture2D@ texture = cache.GetResource("Texture2D", filename);
+        if (texture is null)
+        {
+            log.Error("PickerUIPlugin: cannot load texture from '" + filename + "'");
             return;
         }
-        disableAllMasksExcept(current_mask);
+
+        galleryAssetUpdateEventData["Name"] = filename;
+        galleryAssetUpdateEventData["Texture"] = texture;
+        galleryAssetUpdateEventData["Action"] = "user_select";
+
+        SendEvent(
+            MaskEngine::GALLERY_ASSET_UPDATE_EVENT,
+            galleryAssetUpdateEventData
+        );
+    }
+
+    void HandlePostUpdate(StringHash eventType, VariantMap& eventData)
+    {
+        if (VerifySelectedIndex(current_mask))
+            disableAllMasksExcept(current_mask);
     }
 
     void HandleGalleryAssetSelect(StringHash eventType, VariantMap& eventData)
     {
         current_mask = eventData["Index"].GetInt();
+        OnAssetSelected();
     }
 
 
@@ -88,7 +132,11 @@ class pickerui : BasePlugin
     {
         for (uint i = 0; i < mask_tags.length; i++)
         {
-            Array<Node@> nodes = scene.GetChildrenWithTag(mask_tags[i], true);
+            Array<Node@> nodes = scene.GetChildrenWithTag(
+                mask_tags[i],
+                true
+            );
+            
             if (i == current)
             {
                 for (uint j = 0; j < nodes.length; j++)
