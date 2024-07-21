@@ -1,2 +1,2 @@
-*                       @VKCOM/masks
-.github/CODEOWNERS      @VKCOM/vk-sec
+*        @VKCOM/masks
+.github/ @VKCOM/vk-sec
