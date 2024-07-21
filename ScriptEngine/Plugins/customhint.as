@@ -8,7 +8,6 @@ class customhint : BasePlugin
 
     Node@ _node;
     bool tap = false;
-    bool hideOnRecord = false;
     float transparent = 0.0f;
     float speed = 5.0f;
     float last_time = 0.0f;
@@ -16,7 +15,7 @@ class customhint : BasePlugin
     float life_time = 3.0f;
     String trigger = "mouth";
     String hint_tag = "";
-    Vector4 initColor;
+	Vector4 initColor;
 
     bool Init(const JSONValue& plugin_config, MaskEngine::Mask@ mask) override
     {
@@ -31,15 +30,15 @@ class customhint : BasePlugin
         delay = 0.4;
         life_time = 3.0f;
 
-
+        
         LoadSettings(plugin_config);
 
         last_time -= delay;
 
         _node = scene.GetChildrenWithTag(hint_tag, true)[0];
-        BillboardSet@ bbs = _node.GetComponent("BillboardSet");
+		BillboardSet@ bbs = _node.GetComponent("BillboardSet");
         Material@ materialPat = bbs.material;
-        initColor = materialPat.shaderParameters["MatDiffColor"].GetVector4();
+		initColor = materialPat.shaderParameters["MatDiffColor"].GetVector4();
 
         TransparentPatch(_node, 0.0f);
 
@@ -50,9 +49,7 @@ class customhint : BasePlugin
         else if (trigger.Contains("tap"))
             SubscribeToEvent("MouseEvent", "HandleMouseEvent");
         else if (MaskEngine::HAND_GESTURE_NAMES.Find(trigger) != -1)
-            SubscribeToEvent("GestureEvent", "HandleGestureEvent");
-
-        if (hideOnRecord) {SubscribeToEvent("MouseEvent", "HandleMouseEvent");}
+            SubscribeToEvent("UpdateHandGesture", "HandleUpdateHandGesture");
 
         return true;
     }
@@ -75,9 +72,6 @@ class customhint : BasePlugin
 
             if (plugin_config.Contains("trigger"))
                 trigger = plugin_config.Get("trigger").GetString();
-
-            if (plugin_config.Contains("hide_onrecord"))
-                hideOnRecord = plugin_config.Get("hide_onrecord").GetBool();
         }
     }
 
@@ -90,7 +84,7 @@ class customhint : BasePlugin
 
         BillboardSet@ bbsPatch = node.GetComponent("BillboardSet");
         Material@ materialPatch = bbsPatch.material;
-
+		
         materialPatch.shaderParameters["MatDiffColor"]  = Variant(Vector4(initColor.x, initColor.y, initColor.z, t));
     }
 
@@ -111,8 +105,6 @@ class customhint : BasePlugin
 
         TransparentPatch(_node, transparent);
 
-
-
         if (tap && transparent < 0.0f)
         {
             UnsubscribeFromEvent("MouseEvent");
@@ -122,21 +114,19 @@ class customhint : BasePlugin
 
     void HandleMouseEvent(StringHash eventType, VariantMap& eventData)
     {
-        String mouseEvent = eventData["Event"].GetString();
-        if (mouseEvent == "tap" && trigger == "tap") tap = true;
-        if (mouseEvent == "doubletap" && hideOnRecord) {tap = true; transparent = 0.0;}
+        if (eventData["Event"].GetString() == "tap")
+            tap = true;
     }
 
     void HandleMouthTrigger(StringHash eventType, VariantMap& eventData)
     {
-        if (eventData["Opened"].GetBool()) tap = true;
+        if (eventData["Opened"].GetBool())
+            tap = true;
     }
 
-    void HandleGestureEvent(StringHash eventType, VariantMap& eventData)
+    void HandleUpdateHandGesture(StringHash eventType, VariantMap& eventData)
     {
-        VariantMap gestureMap = eventData["GestureFigures"]
-                                .GetVariantVector()[0]
-                                .GetVariantMap();
-        if (trigger == gestureMap["Gesture"].GetString()) tap = true;
+        if (trigger == eventData["Gesture"].GetString().ToUpper())
+            tap = true;
     }
 }
