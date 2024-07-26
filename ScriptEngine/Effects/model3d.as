@@ -322,6 +322,7 @@ class model3d : BaseEffectImpl
     VariantMap handGestureData;
     Vector3 _node_initial_scale;
     Vector3 _anchor_node_initial_scale;
+    bool _allow_rotation = true;
 
     // Child wiggle effect
     BaseEffect@ _wiggly;
@@ -482,6 +483,9 @@ class model3d : BaseEffectImpl
         Array<String> reservedField;
         reservedField.Push("animation");
         reservedField.Push("material");
+
+        if (effect_desc.Get("allow_rotation").isBool)
+            _allow_rotation = effect_desc.Get("allow_rotation").GetBool();
         
         // Wiggle injection point
         if (effect_desc.Contains("wiggle"))
@@ -1052,6 +1056,11 @@ class model3d : BaseEffectImpl
                 {
                     _SetVisible(false);
                 }
+            }
+
+            if (!_allow_rotation)
+            {
+                _anchorNode.rotation = _anchorNode.parent.rotation.Inverse();
             }
         }
     }

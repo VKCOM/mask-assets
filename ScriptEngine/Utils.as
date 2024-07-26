@@ -268,4 +268,11 @@ bool FileExists(String& filename)
     return file !is null;
 }
 
+Quaternion QuaternionZero()
+{
+    Quaternion q = Quaternion();
+    q.FromEulerAngles(0.0, 0.0, 0.0);
+    return q;
+}
+
 }
