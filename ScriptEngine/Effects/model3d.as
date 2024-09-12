@@ -316,6 +316,7 @@ class model3d : BaseEffectImpl
     BaseAnimationImpl@ baseAnimation;
     String _animFileName;
     float _animSpeed;
+    bool _allow_rotation = true;
 
 
     model3d()
@@ -445,6 +446,9 @@ class model3d : BaseEffectImpl
         Array<String> reservedField;
         reservedField.Push("animation");
         reservedField.Push("material");
+
+        if (effect_desc.Get("allow_rotation").isBool)
+            _allow_rotation = effect_desc.Get("allow_rotation").GetBool();
         
         // Wiggle injection point
         if (effect_desc.Contains("wiggle"))
@@ -502,11 +506,9 @@ class model3d : BaseEffectImpl
                 check Unload      
         */
         
-        // XMLFile@ sky = cache.GetResource("XMLFile", "Textures/Sky.xml");
-        // Print(sky.ToString());
+
 
         // Parse single or multiple materials
-        Material@ mat;
         if (effect_desc.Get("material").isArray)
         {
             for (uint i = 0; i < effect_desc.Get("material").size; i++)
@@ -708,10 +710,6 @@ class model3d : BaseEffectImpl
         String triggerStart = ani_desc.Get("trigger_start").GetString();
         String triggerStop = ani_desc.Get("trigger_stop").GetString();
 
-        // hehe is a num of frames
-        // AnimationState@ animState = animatedModel.GetAnimationState(0);
-        // Animation@ anim = animState.animation;
-        // Print(anim.memoryUse);
 
         SubscribeToEvent(START_ANIMATION_EVENT, "HandleStartAnimation");
         SubscribeToEvent(STOP_ANIMATION_EVENT, "HandleStopAnimation");
@@ -919,6 +917,11 @@ class model3d : BaseEffectImpl
                 {
                     _SetVisible(false);
                 }
+            }
+
+            if (!_allow_rotation)
+            {
+                _anchorNode.rotation = _anchorNode.parent.rotation.Inverse();
             }
         }
     }
