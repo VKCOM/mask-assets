@@ -21,8 +21,8 @@ class model_texture_animation
     String texture_resource;
 
     // From artist's settings in 'mask.json'
-    String trigger_start;
-    String trigger_stop;
+    String trigger_start = "";
+    String trigger_stop = "";
     float fps = 30.0;
 
     // Runtime variables
@@ -65,14 +65,28 @@ class model_texture_animation
             return;
         }
 
-        // Sunscriptions
+        if (texture_desc.Contains("animation") && trigger_start == "")
+            start();
+
         if (trigger_start == "tap" || trigger_stop == "tap")
             SubscribeToEvent("MouseEvent", "HandleTapEvent");
 
         if (trigger_start == "face_found" || trigger_stop == "face_lost")
             SubscribeToEvent("UpdateFaceDetected", "HandleFaceDetected");
 
+        if (trigger_start == "mouth_open")
+            SubscribeToEvent("MouthTrigger", "HandleMouthTrigger");
+
         SubscribeToEvent("Update", "HandleUpdate");
+    }
+
+    private void HandleMouthTrigger(StringHash eventType, VariantMap& eventData)
+    {
+        if (eventData["NFace"].GetUInt() != 0 || !eventData["Opened"].GetBool())
+            return;
+
+        if (!running)
+            start();
     }
 
     private bool parse_description(JSONValue& texture_desc)
@@ -276,7 +290,7 @@ class model_texture_animation
             if (animation_type == "once" && elapsedTime >= duration)
             // if (animation_type == "once" && frame >= texturePaths.length)
             {
-                stop(trigger_start == "tap");
+                stop(trigger_start == "tap" || trigger_start == "mouth_open");
                 return;
             }
 
@@ -386,11 +400,15 @@ class model3d : BaseEffectImpl
             }
 
         // Visibility Triggers
-        if (effect_desc.Get("visible").GetString() == "mouth_open")
+        String visibleTrigger = effect_desc.Get("visible").GetString();
+        if (visibleTrigger == "mouth_open" || visibleTrigger == "mouth_close")
         {
             Array<String> events     = { "mouth_open"  , "mouth_close" };
             Array<String> actions    = { "show_action" , "hide_action" };
             Array<String> delayParam = { "show_delay"  , "hide_delay"  };
+            
+            if (visibleTrigger == "mouth_close")
+                events.Reverse();
 
             for (uint i = 0; i < events.length; i++)
             {
@@ -399,28 +417,28 @@ class model3d : BaseEffectImpl
 
                 if (mouthOpen is null)
                 {
-                    log.Error("Cannot create mouthOpen for patch");
+                    log.Error("Cannot init mouth_open for model3d");
                     return false;
                 }
 
                 String json;
 
                 if (effect_desc.Contains(delayParam[i]))
-                    json = "{ \"name\" : \"" + actions[i] + "\"," +
+                    json = "{ \"name\": \"" + actions[i] + "\"," +
                         "\"delay\":" + effect_desc.Get(delayParam[i]).GetFloat() + "}";
                 else
-                    json = actions[i];
+                    json = "{ \"name\": \"" + actions[i] + "\" }";
 
                 JSONFile@ jsonFile = JSONFile();
                 jsonFile.FromString(json);
 
                 if (!mouthOpen.Init(jsonFile.GetRoot(), this))
                 {
-                    log.Error("Cannot init mouthOpen for patch");
+                    log.Error("Cannot init mouth_open for model3d");
                     return false;
                 }
             }
-            _visible = false;
+            _visible = visibleTrigger == "mouth_close";
         }
 
         // Init position / rotation / scale
@@ -502,11 +520,9 @@ class model3d : BaseEffectImpl
                 check Unload      
         */
         
-        // XMLFile@ sky = cache.GetResource("XMLFile", "Textures/Sky.xml");
-        // Print(sky.ToString());
+
 
         // Parse single or multiple materials
-        Material@ mat;
         if (effect_desc.Get("material").isArray)
         {
             for (uint i = 0; i < effect_desc.Get("material").size; i++)
@@ -708,10 +724,6 @@ class model3d : BaseEffectImpl
         String triggerStart = ani_desc.Get("trigger_start").GetString();
         String triggerStop = ani_desc.Get("trigger_stop").GetString();
 
-        // hehe is a num of frames
-        // AnimationState@ animState = animatedModel.GetAnimationState(0);
-        // Animation@ anim = animState.animation;
-        // Print(anim.memoryUse);
 
         SubscribeToEvent(START_ANIMATION_EVENT, "HandleStartAnimation");
         SubscribeToEvent(STOP_ANIMATION_EVENT, "HandleStopAnimation");
@@ -949,6 +961,13 @@ class model3d : BaseEffectImpl
     Array<Material@> GetMaterials() 
     {
         return materials;
+    }
+
+    Material@ GetMaterial() override
+    {
+        if (!materials.empty)
+            return materials[0];
+        return null;
     }
 
     BaseAnimation@ GetAnimation() override
