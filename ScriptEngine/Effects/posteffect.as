@@ -38,7 +38,7 @@ class posteffect : BaseEffectImpl
             return false;
         }
 
-        makerXml = "<renderpath><rendertarget name=\"buffer\" size=\"2048 2048\" format=\"rgb\" filter=\"true\" />" +
+        makerXml = "<renderpath><rendertarget name=\"buffer\" size=\"1080 1920\" format=\"rgb\" filter=\"true\" />" +
                    "<command type=\"quad\" vs=\"pe_" + shader_type + "\" ps=\"pe_" + shader_type + "\" output=\"buffer\">" +
                    "<texture unit=\"environment\" name=\"viewport\" /><parameter name=\"MatSpecColor\" value=\"" + intensity + " 0.0 0.0 0.0\" />" +
                    "</command><command type=\"quad\" vs=\"CopyFramebuffer\" ps=\"CopyFramebuffer\" output=\"viewport\">" +
@@ -47,7 +47,7 @@ class posteffect : BaseEffectImpl
 
         if (shader_type == "dispersion") {
 
-            makerXml = "<renderpath><rendertarget name=\"buffer\" size=\"2048 2048\" format=\"rgb\" filter=\"true\" />" +
+            makerXml = "<renderpath><rendertarget name=\"buffer\" size=\"1080 1920\" format=\"rgb\" filter=\"true\" />" +
                        "<command type=\"quad\" vs=\"pe_chromatic\" ps=\"pe_chromatic\" output=\"buffer\"><texture unit=\"environment\" name=\"viewport\" />" +
                        "<texture unit=\"diffuse\" name=\"Textures/vignette.png\" /><parameter name=\"MatSpecColor\" value=\"" + intensity + " 0.0 0.0 0.0\" /></command>" +
                        "<command type=\"quad\" vs=\"pe_zoom\" ps=\"pe_zoom\" output=\"viewport\"><texture unit=\"environment\" name=\"buffer\" />" +
@@ -57,7 +57,7 @@ class posteffect : BaseEffectImpl
 
         if (shader_type == "noise") {
 
-            makerXml = "<renderpath><rendertarget name=\"buffer\" size=\"2048 2048\" format=\"rgb\" filter=\"true\" />" +
+            makerXml = "<renderpath><rendertarget name=\"buffer\" size=\"1080 1920\" format=\"rgb\" filter=\"true\" />" +
                        "<command type=\"quad\" vs=\"pe_noise\" ps=\"pe_noise\" output=\"buffer\"><texture unit=\"environment\" name=\"viewport\" />" +
                        "<texture unit=\"diffuse\" name=\"Textures/noise.png\" /><parameter name=\"MatSpecColor\" value=\"" + intensity + " 0.0 0.0 0.0\" />" +
                        "</command><command type=\"quad\" vs=\"CopyFramebuffer\" ps=\"CopyFramebuffer\" output=\"viewport\">" +

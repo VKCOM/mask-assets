@@ -77,7 +77,6 @@ class parallax : BasePlugin
     void ParallaxF(Array<Node@> nodes, Node@ faceNode, float k)
     {
         for (uint i = 0; i < nodes.length; i++)
-            BillboardSet@ bbs = nodes[i].GetComponent("BillboardSet");
-            bbs.billboards[0].position = Vector3(faceNode.position.x * k, faceNode.position.y * k, 0.0f);
+            nodes[i].position = Vector3(faceNode.position.x * k, faceNode.position.y * k, 0.0f);
     }
 }
