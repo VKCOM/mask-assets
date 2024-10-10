@@ -65,9 +65,7 @@ class model_texture_animation
             return;
         }
 
-        if (texture_desc.Contains("animation") && trigger_start == "")
-            start();
-
+        // Sunscriptions
         if (trigger_start == "tap" || trigger_stop == "tap")
             SubscribeToEvent("MouseEvent", "HandleTapEvent");
 
@@ -330,6 +328,7 @@ class model3d : BaseEffectImpl
     BaseAnimationImpl@ baseAnimation;
     String _animFileName;
     float _animSpeed;
+    bool _allow_rotation = true;
 
 
     model3d()
@@ -463,6 +462,9 @@ class model3d : BaseEffectImpl
         Array<String> reservedField;
         reservedField.Push("animation");
         reservedField.Push("material");
+
+        if (effect_desc.Get("allow_rotation").isBool)
+            _allow_rotation = effect_desc.Get("allow_rotation").GetBool();
         
         // Wiggle injection point
         if (effect_desc.Contains("wiggle"))
@@ -931,6 +933,11 @@ class model3d : BaseEffectImpl
                 {
                     _SetVisible(false);
                 }
+            }
+
+            if (!_allow_rotation)
+            {
+                _anchorNode.rotation = _anchorNode.parent.rotation.Inverse();
             }
         }
     }
