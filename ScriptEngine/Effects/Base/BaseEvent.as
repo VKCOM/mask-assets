@@ -10,7 +10,7 @@ class BaseEvent : BaseEffectImpl
     // Initialise with JSONValue with some BaseAction
     bool Init(const JSONValue& effect_desc, BaseEffect@ parent) override
     {
-        if (!BaseEffectImpl::Init(effect_desc, parent))
+        if (effect_desc.valueType == JSON_NULL || !BaseEffectImpl::Init(effect_desc, parent))
             return false;
 
         if (effect_desc.isString)
@@ -19,10 +19,10 @@ class BaseEvent : BaseEffectImpl
             BaseEffect@ action = AddChildEffect(actionName);
 
             // Adopt action to creator parent, not to event!
-            // But action is also among `_childern` of event...
+            // But action is also among the `_childern` of event...
             if (!action.Init(parent))
             {
-                log.Error("BaseEvent: Cannot init " + actionName  + " for patch");
+                log.Error("BaseEvent: Cannot init " + actionName  + " for " + parent.GetName());
                 return false;
             }
 
@@ -36,7 +36,7 @@ class BaseEvent : BaseEffectImpl
                 BaseEffect@ action = AddChildEffect(actionName);
                 if (!action.Init(effect_desc, parent))
                 {
-                    log.Error("BaseEvent: Cannot init " + actionName + " for patch");
+                    log.Error("BaseEvent: Cannot init " + actionName  + " for " + parent.GetName());
                     return false;
                 }
             }
